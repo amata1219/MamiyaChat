@@ -1,0 +1,4 @@
+CoreServer: "main"
+Format: "[player]§a:§r [message]"
+Normal: "[original]"
+Converted: "[converted]§7([original]§7)"
