@@ -1,4 +1,8 @@
 CoreServer: "main"
-Format: "[player]§a:§r [message]"
+MailDays: 30
+#各テキストフォーマット、ローマ字変換された場合はConvertedが、そうでない場合はNormalがmessageに
+ChatFormat: "[player]§a:§r [message]"
+PrivateChatFormat: "[[player] > You]§a§r [message]"
+MailFormat: "[sender]§a:§r [message]"
 Normal: "[original]"
 Converted: "[converted]§7([original]§7)"
