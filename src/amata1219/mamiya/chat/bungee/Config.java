@@ -11,18 +11,19 @@ import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
 
-public class Conf {
+public class Config {
 
 	private static final ConfigurationProvider PROVIDER = ConfigurationProvider.getProvider(YamlConfiguration.class);
 
 	private final Main plugin = Main.plugin;
 	private final String name;
 	private final File file;
-	Configuration conf;
+	public Configuration config;
 
-	public Conf(String name){
+	public Config(String name){
 		this.name = name;
 		file = new File(plugin.getDataFolder() + File.separator + name);
+		saveDefault();
 	}
 
 	public void saveDefault(){
@@ -43,7 +44,7 @@ public class Conf {
 		}
 
 		try{
-            conf = PROVIDER.load(file);
+            config = PROVIDER.load(file);
 		}catch(IOException e){
 			e.printStackTrace();
 		}
@@ -51,7 +52,7 @@ public class Conf {
 
 	public void save(){
 		try{
-			PROVIDER.save(conf, file);
+			PROVIDER.save(config, file);
 		}catch(IOException e){
 			e.printStackTrace();
 		}
@@ -59,7 +60,7 @@ public class Conf {
 
 	public void reload(){
 		try{
-            conf = PROVIDER.load(file);
+            config = PROVIDER.load(file);
 		}catch(IOException e){
 			e.printStackTrace();
 		}

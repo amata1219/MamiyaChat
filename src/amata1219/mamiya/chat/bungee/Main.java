@@ -11,19 +11,16 @@ import com.google.common.collect.HashBiMap;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteStreams;
 
-import amata1219.library.command.Args;
 import amata1219.mamiya.chat.ByteArrayDataMaker;
 import amata1219.mamiya.chat.Converter;
 import net.md_5.bungee.UserConnection;
 import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.event.ChatEvent;
 import net.md_5.bungee.api.event.PluginMessageEvent;
 import net.md_5.bungee.api.event.PostLoginEvent;
-import net.md_5.bungee.api.plugin.Command;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.api.plugin.PluginManager;
@@ -34,14 +31,14 @@ public class Main extends Plugin implements Listener {
 
 	public static Main plugin;
 
-	private Conf conf, data, mail, players;
-	private final HashMap<UUID, HashSet<UUID>> muted = new HashMap<>();
-	//mutedは空のHashSetを許容しない
-	private ServerInfo coreServer;
-	String format, normal, converted, privateformat, mailformat;
-	private final HashMap<UUID, ArrayList<Mail>> mails = new HashMap<>();
-	private long maildays = 2592000000000000L;
-	public final HashBiMap<UUID, String> nameData = HashBiMap.create();
+	public Config config, mutedata, maildata, playerdata;
+	public ServerInfo dynmapServer;
+	public String mainChatFormat, normalFormat, convertedFormat, privateChatFormat, mailFormat;
+	public final HashBiMap<UUID, String> names = HashBiMap.create();
+	public final HashMap<UUID, HashSet<UUID>> muted = new HashMap<>();
+	public final HashMap<UUID, ArrayList<Mail>> mails = new HashMap<>();
+	public long maildays = 2592000000000000L;
+
 
 	@Override
 	public void onEnable(){
@@ -55,15 +52,13 @@ public class Main extends Plugin implements Listener {
 		 *
 		 */
 
-		conf = new Conf("conf.yml");
-		conf.saveDefault();
+		config = new Config("config.yml");
 
 		loadValues();
 
-		data = new Conf("data.yml");
-		data.saveDefault();
+		mutedata = new Config("mutedata.yml");
 
-		Configuration datastore = data.conf;
+		Configuration datastore = mutedata.config;
 		for(String key : datastore.getKeys()){
 			UUID uuid = UUID.fromString(key);
 			List<String> list = datastore.getStringList(key);
@@ -77,9 +72,9 @@ public class Main extends Plugin implements Listener {
 			muted.put(uuid, set);
 		}
 
-		mail = new Conf("mail.yml");
-		mail.saveDefault();
-		Configuration mailstore = mail.conf;
+		maildata = new Config("maildata.yml");
+		maildata.saveDefault();
+		Configuration mailstore = maildata.config;
 		for(String key : mailstore.getKeys()){
 			long time = Long.parseLong(key);
 			if(System.nanoTime() - time >= maildays){
@@ -95,183 +90,18 @@ public class Main extends Plugin implements Listener {
 			mails.add(new Mail(time, receiver, UUID.fromString(data[1]), data[2]));
 		}
 
-		players = new Conf("players.yml");
-		players.saveDefault();
-		Configuration plconf = players.conf;
+		playerdata = new Config("playerdata.yml");
+		playerdata.saveDefault();
+		Configuration plconf = playerdata.config;
 		for(String key : plconf.getKeys())
-			nameData.put(UUID.fromString(key), plconf.getString(key));
+			names.put(UUID.fromString(key), plconf.getString(key));
 
 		PluginManager manager = getProxy().getPluginManager();
-		/*
-		 * tell player message
-		 * mail send/clear player message
-		 * mute player
-		 * unmute player
-		 */
 
-		manager.registerCommand(this, new Command("tell", "mamiya.chat.tell", "msg", "message", "mctell"){
-
-			@Override
-			public void execute(CommandSender sender, String[] strs) {
-				Args args = new Args(strs);
-				String name = args.next();
-				ProxiedPlayer player = getProxy().getPlayer(name);
-				if(player == null){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーはオフライン又は存在しません。"));
-					return;
-				}
-
-				if(!args.hasNext()){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "メッセージを入力して下さい。"));
-				}else{
-					String senderName = sender instanceof ProxiedPlayer ? ((ProxiedPlayer) sender).getName() : "Console";
-					String message = privateformat.replace("[sender]", senderName)
-							.replace("[receiver]", player.getName())
-							.replace("[message]", formatMessage(coloring(args.get(1, args.length() - 1))));
-					TextComponent component = new TextComponent(message);
-					sender.sendMessage(component);
-					player.sendMessage(component);
-				}
-			}
-
-		});
-
-		manager.registerCommand(this, new Command("mail", "mamiya.chat.mail", "mcmail"){
-
-			@Override
-			public void execute(CommandSender sender, String[] strs) {
-				if(!(sender instanceof ProxiedPlayer)){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "ゲーム内から実行して下さい。"));
-					return;
-				}
-
-				ProxiedPlayer player = (ProxiedPlayer) sender;
-				UUID uuid = player.getUniqueId();
-				Args args = new Args(strs);
-				switch(args.next()){
-				case "send":
-					if(!args.hasNext()){
-						sender.sendMessage(new TextComponent(ChatColor.RED + "送信先を指定して下さい。"));
-						return;
-					}
-
-					String receiver = args.get(1);
-					if(!nameData.containsValue(receiver)){
-						sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは存在しません。"));
-						return;
-					}
-
-					if(!args.hasNext()){
-						sender.sendMessage(new TextComponent(ChatColor.RED + "メッセージを入力して下さい。"));
-						return;
-					}
-
-					UUID receiverUUID = nameData.inverse().get(receiver);
-					Mail mail = new Mail(System.nanoTime(), receiverUUID, uuid, coloring(args.get(2, args.length())));
-					if(getProxy().getPlayer(receiverUUID) != null)
-						mail.send();
-
-					ArrayList<Mail> mailList = plugin.mails.get(receiverUUID);
-					if(mailList == null)
-						plugin.mails.put(receiverUUID, mailList = new ArrayList<>());
-					mailList.add(mail);
-					player.sendMessage(new TextComponent(ChatColor.AQUA + receiver + "さんにメールを送信しました。"));
-					player.sendMessage(new TextComponent(mail.getMessage()));
-					break;
-				case "clear":
-					if(!mails.containsKey(uuid)){
-						player.sendMessage(new TextComponent(ChatColor.RED + "受信したメールはありません。"));
-						return;
-					}
-
-					ArrayList<Mail> mails = plugin.mails.get(uuid);
-					int count = mails.size();
-					Conf mailstore = plugin.mail;
-					for(Mail ml : mails)
-						mailstore.conf.set(String.valueOf(ml.time), null);
-					plugin.mails.remove(uuid);
-					mailstore.update();
-					player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(count) + "件のメールを削除しました。"));
-					break;
-				}
-			}
-
-		});
-
-		manager.registerCommand(this, new Command("mute", "mamiya.chat.mute", "mcmute"){
-
-			@Override
-			public void execute(CommandSender sender, String[] args) {
-				if(!(sender instanceof ProxiedPlayer)){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "ゲーム内から実行して下さい。"));
-					return;
-				}
-
-				if(args.length == 0){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "プレイヤーを指定して下さい。"));
-					return;
-				}
-
-				String target = args[0];
-				if(!nameData.containsValue(target)){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは存在しません。"));
-					return;
-				}
-
-				ProxiedPlayer player = (ProxiedPlayer) sender;
-				UUID uuid = player.getUniqueId();
-				UUID tuuid = nameData.inverse().get(target);
-				HashSet<UUID> set = muted.get(uuid);
-				if(set == null)
-					muted.put(uuid, new HashSet<>());
-
-				if(set.contains(tuuid)){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは既にミュートしています。"));
-					return;
-				}
-
-				set.add(tuuid);
-				sender.sendMessage(new TextComponent(ChatColor.AQUA + target + "さんをミュートしました。"));
-			}
-
-		});
-
-		manager.registerCommand(this, new Command("unmute", "mamiya.chat.unmute", "mcunmute"){
-
-			@Override
-			public void execute(CommandSender sender, String[] args) {
-				if(!(sender instanceof ProxiedPlayer)){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "ゲーム内から実行して下さい。"));
-					return;
-				}
-
-				if(args.length == 0){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "プレイヤーを指定して下さい。"));
-					return;
-				}
-
-				String target = args[0];
-				if(!nameData.containsValue(target)){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは存在しません。"));
-					return;
-				}
-
-				ProxiedPlayer player = (ProxiedPlayer) sender;
-				UUID uuid = player.getUniqueId();
-				UUID tuuid = nameData.inverse().get(target);
-				HashSet<UUID> set = muted.get(uuid);
-				if(set == null || set.contains(tuuid)){
-					sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーはミュートしていません。"));
-					return;
-				}
-
-				set.remove(tuuid);
-				if(set.isEmpty())
-					muted.remove(uuid);
-				sender.sendMessage(new TextComponent(ChatColor.AQUA + target + "さんのミュートを解除しました。"));
-			}
-
-		});
+		manager.registerCommand(this, new TellCommand("tell", "mamiya.chat.tell", "msg", "message", "mctell"));
+		manager.registerCommand(this, new MailCommand("mail", "mamiya.chat.mail", "mcmail"));
+		manager.registerCommand(this, new MuteCommand("mute", "mamiya.chat.mute", "mcmute"));
+		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat.unmute", "mcunmute"));
 
 		manager.registerListener(this, this);
 	}
@@ -280,7 +110,7 @@ public class Main extends Plugin implements Listener {
 	public void onDisable(){
 		getProxy().getPluginManager().unregisterListeners(this);
 
-		Configuration datastore = data.conf;
+		Configuration datastore = mutedata.config;
 		StringBuilder builder = new StringBuilder();
 		for(Entry<UUID, HashSet<UUID>> entry : muted.entrySet()){
 			String uuid = entry.getKey().toString();
@@ -295,25 +125,29 @@ public class Main extends Plugin implements Listener {
 				builder.setLength(0);
 			}
 		}
-		data.save();
+		mutedata.save();
 
-		Configuration mailstore = mail.conf;
-		for(ArrayList<Mail> mails : this.mails.values()){
-			for(Mail mail : mails){
+		Configuration mailstore = maildata.config;
+		for(ArrayList<Mail> list : mails.values()){
+			for(Mail mail : list){
 				mailstore.set(String.valueOf(mail.time), mail.toString());
 			}
 		}
-		mail.save();
+		maildata.save();
 	}
 
 	public void loadValues(){
-		Configuration config = conf.conf;
-		coreServer = getProxy().getServerInfo(config.getString("CoreServer"));
-		format = coloring(config.getString("Format"));
-		normal = coloring(config.getString("Normal"));
-		converted = coloring(config.getString("Converted"));
-		privateformat = coloring(config.getString("PrivateChatFormat"));
-		mailformat = coloring(config.getString("MailFormat"));
+		Configuration config = this.config.config;
+
+		mainChatFormat = coloring(config.getString("TextFormat.MainChat"));
+		privateChatFormat = coloring(config.getString("TextFormat.PrivateChat"));
+		mailFormat = coloring(config.getString("TextFormat.Mail"));
+
+		normalFormat = coloring(config.getString("MessageFormat.Normal"));
+		convertedFormat = coloring(config.getString("MessageFormat.Converted"));
+
+		dynmapServer = getProxy().getServerInfo(config.getString("DynmapServer"));
+
 		maildays = config.getInt("MailDays") * 86400000000000L;
 	}
 
@@ -322,10 +156,11 @@ public class Main extends Plugin implements Listener {
 		ProxiedPlayer player = e.getPlayer();
 		UUID uuid = player.getUniqueId();
 		String name = player.getName();
-		if(!nameData.containsKey(uuid) || !nameData.get(uuid).equals(name))
-			nameData.put(uuid, name);
-		ArrayList<Mail> mails = this.mails.get(uuid);
-		if(mails != null) for(Mail mail : mails)
+
+		if(!names.containsKey(uuid) || !names.get(uuid).equals(name))
+			names.put(uuid, name);
+
+		if(mails.containsKey(uuid)) for(Mail mail : mails.get(uuid))
 			mail.send();
 	}
 
@@ -342,39 +177,31 @@ public class Main extends Plugin implements Listener {
 		 *  - 悪質なやつはずば抜けて悪質なのでもう無視(そもそもそんなやつたまにしか来ない)
 		 *  ローマ字変換(これあるだけで神になれる)
 		 */
+		System.out.println("onChat: 1");
 
 		if(e.isCancelled() || e.isCommand())
 			return;
 
+		System.out.println("onChat: 2");
+
 		UserConnection sender = (UserConnection) e.getSender();
-		String format = this.format;
-		String name = sender.getName();
-		format = format.replace("[player]", name);
+		UUID senderUUID = sender.getUniqueId();
+		String senderName = sender.getName();
 
 		String message = e.getMessage();
-
-		//着色
-		if(message.indexOf("&") != 0)
+		if(message.indexOf("&") != -1)
 			message = coloring(message);
 
-		format = format.replace("[message]", formatMessage(message));
-
-		UUID senderUUID = sender.getUniqueId();
-		TextComponent component = new TextComponent(message);
-		//全プレイヤーにメッセージ送信(ミュート判定有り)
+		TextComponent component = new TextComponent(mainChatFormat.replace("[player]", senderName).replace("[message]", formatMessage(message)));
 		for(ProxiedPlayer player : getProxy().getPlayers()){
 			HashSet<UUID> set = muted.get(player.getUniqueId());
-			if(set != null && set.contains(senderUUID))
-				continue;
-
-			player.sendMessage(component);
+			if(set == null || !set.contains(senderUUID))
+				player.sendMessage(component);
 		}
 
-		//Dynmap用のメッセージ送信
-		byte[] dynmap = ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "Dynmap", name, message);
-		coreServer.sendData("BungeeCord", dynmap);
+		byte[] dynmap = ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "Dynmap", senderName, message);
+		dynmapServer.sendData("BungeeCord", dynmap);
 
-		e.setMessage(message);
 		e.setCancelled(true);
 	}
 
@@ -388,10 +215,10 @@ public class Main extends Plugin implements Listener {
 		if(!in.readUTF().equals("MamiyaChat"))
 			return;
 
-		if(!in.readUTF().equals("DynmapWebChat"))
+		if(!in.readUTF().equals("WebChat"))
 			return;
 
-		String format = this.format;
+		String format = this.mainChatFormat;
 		format = format.replace("[player]", in.readUTF());
 
 		String message = in.readUTF();
@@ -407,16 +234,8 @@ public class Main extends Plugin implements Listener {
 	}
 
 	public String formatMessage(String message){
-		String type = null;
-		if(Converter.canConvert(message)){
-			type = converted;
-			type = type.replace("[original]", message);
-			type = type.replace("[converted]", message = Converter.convert(message));
-		}else{
-			type = normal;
-			type = type.replace("[original]", message);
-		}
-		return message;
+		return Converter.canConvert(message) ? convertedFormat.replace("[original]", message)
+				.replace("[converted]", Converter.convert(message)) : normalFormat.replace("[original]", message);
 	}
 
 }

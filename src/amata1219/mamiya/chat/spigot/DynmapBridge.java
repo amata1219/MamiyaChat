@@ -18,6 +18,7 @@ import com.google.common.io.ByteStreams;
 
 import amata1219.mamiya.chat.ByteArrayDataMaker;
 
+
 public class DynmapBridge implements Listener, PluginMessageListener {
 
 	private final DynmapAPI dynmap;

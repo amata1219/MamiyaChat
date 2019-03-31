@@ -29,7 +29,7 @@ public class Mail {
 
 	public String getMessage(){
 		Main plugin = Main.plugin;
-		return plugin.mailformat.replace("[sender]", plugin.nameData.get(sender)).replace("[message]", plugin.formatMessage(message));
+		return plugin.mailFormat.replace("[sender]", plugin.names.get(sender)).replace("[message]", plugin.formatMessage(message));
 	}
 
 	@Override

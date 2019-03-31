@@ -1,0 +1,9 @@
+TextFormats:
+  MainChat: "[player]&a:&r [message]"
+  PrivateChat: "[[sender] > [receiver]]&a&r [message]"
+  Mail: "[sender]&a:&r [message]"
+MessageFormat:
+  Normal: "[original]"
+  Converted: "[converted]&7([original]&7)"
+DynmapServer: "main"
+MailDays: 30
