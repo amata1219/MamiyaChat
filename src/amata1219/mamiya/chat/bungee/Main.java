@@ -1,19 +1,17 @@
 package amata1219.mamiya.chat.bungee;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.UUID;
 
-import org.bukkit.craftbukkit.libs.joptsimple.internal.Strings;
-
 import com.google.common.collect.HashBiMap;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteStreams;
 
+import amata1219.library.command.Args;
 import amata1219.mamiya.chat.ByteArrayDataMaker;
 import amata1219.mamiya.chat.Converter;
 import net.md_5.bungee.UserConnection;
@@ -48,6 +46,14 @@ public class Main extends Plugin implements Listener {
 	@Override
 	public void onEnable(){
 		plugin = this;
+
+		/*
+		 * bugs
+		 *
+		 * section -> tula
+		 * nanashityatto
+		 *
+		 */
 
 		conf = new Conf("conf.yml");
 		conf.saveDefault();
@@ -108,26 +114,23 @@ public class Main extends Plugin implements Listener {
 			@Override
 			public void execute(CommandSender sender, String[] strs) {
 				Args args = new Args(strs);
-				switch(args.get()){
-				case "":
-					sender.sendMessage(new TextComponent(ChatColor.RED + "送信先を指定して下さい。"));
-					break;
-				default:
-					String player = args.get(0);
-					if(getProxy().getPlayer(player) == null){
-						sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーはオフライン又は存在しません。"));
-						break;
-					}
+				String name = args.next();
+				ProxiedPlayer player = getProxy().getPlayer(name);
+				if(player == null){
+					sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーはオフライン又は存在しません。"));
+					return;
+				}
 
-					switch(args.get()){
-						case "":
-							sender.sendMessage(new TextComponent(ChatColor.RED + "メッセージを入力して下さい。"));
-							break;
-						default:
-							String senderName = sender instanceof ProxiedPlayer ? ((ProxiedPlayer) sender).getName() : "Console";
-							getProxy().getPlayer(player).sendMessage(new TextComponent(privateformat.replace("[player]", senderName).replace("[message]", formatMessage(coloring(Strings.join(Arrays.copyOfRange(strs, 1, strs.length), " "))))));
-					}
-					break;
+				if(!args.hasNext()){
+					sender.sendMessage(new TextComponent(ChatColor.RED + "メッセージを入力して下さい。"));
+				}else{
+					String senderName = sender instanceof ProxiedPlayer ? ((ProxiedPlayer) sender).getName() : "Console";
+					String message = privateformat.replace("[sender]", senderName)
+							.replace("[receiver]", player.getName())
+							.replace("[message]", formatMessage(coloring(args.get(1, args.length() - 1))));
+					TextComponent component = new TextComponent(message);
+					sender.sendMessage(component);
+					player.sendMessage(component);
 				}
 			}
 
@@ -145,40 +148,35 @@ public class Main extends Plugin implements Listener {
 				ProxiedPlayer player = (ProxiedPlayer) sender;
 				UUID uuid = player.getUniqueId();
 				Args args = new Args(strs);
-				switch(args.get()){
+				switch(args.next()){
 				case "send":
-					switch(args.get()){
-					case "":
+					if(!args.hasNext()){
 						sender.sendMessage(new TextComponent(ChatColor.RED + "送信先を指定して下さい。"));
-						break;
-					default:
-						String receiver = args.get(1);
-						if(!nameData.containsValue(receiver)){
-							sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは存在しません。"));
-							break;
-						}
-
-						switch(args.get()){
-							case "":
-								sender.sendMessage(new TextComponent(ChatColor.RED + "メッセージを入力して下さい。"));
-								break;
-							default:
-								String message = Strings.join(Arrays.copyOfRange(strs, 1, strs.length), " ");
-								UUID ruuid = nameData.inverse().get(receiver);
-								Mail mail = new Mail(System.nanoTime(), ruuid, uuid, coloring(message));
-								if(getProxy().getPlayer(ruuid) != null)
-									mail.send();
-								Main plugin = Main.plugin;
-								ArrayList<Mail> mails = plugin.mails.get(ruuid);
-								if(mails == null)
-									plugin.mails.put(ruuid, mails = new ArrayList<>());
-								mails.add(mail);
-								player.sendMessage(new TextComponent(ChatColor.AQUA + receiver + "さんにメールを送信しました。"));
-								player.sendMessage(new TextComponent(mail.getMessage()));
-							break;
-						}
-						break;
+						return;
 					}
+
+					String receiver = args.get(1);
+					if(!nameData.containsValue(receiver)){
+						sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは存在しません。"));
+						return;
+					}
+
+					if(!args.hasNext()){
+						sender.sendMessage(new TextComponent(ChatColor.RED + "メッセージを入力して下さい。"));
+						return;
+					}
+
+					UUID receiverUUID = nameData.inverse().get(receiver);
+					Mail mail = new Mail(System.nanoTime(), receiverUUID, uuid, coloring(args.get(2, args.length())));
+					if(getProxy().getPlayer(receiverUUID) != null)
+						mail.send();
+
+					ArrayList<Mail> mailList = plugin.mails.get(receiverUUID);
+					if(mailList == null)
+						plugin.mails.put(receiverUUID, mailList = new ArrayList<>());
+					mailList.add(mail);
+					player.sendMessage(new TextComponent(ChatColor.AQUA + receiver + "さんにメールを送信しました。"));
+					player.sendMessage(new TextComponent(mail.getMessage()));
 					break;
 				case "clear":
 					if(!mails.containsKey(uuid)){
@@ -186,12 +184,11 @@ public class Main extends Plugin implements Listener {
 						return;
 					}
 
-					Main plugin = Main.plugin;
 					ArrayList<Mail> mails = plugin.mails.get(uuid);
 					int count = mails.size();
 					Conf mailstore = plugin.mail;
-					for(Mail mail : mails)
-						mailstore.conf.set(String.valueOf(mail.time), null);
+					for(Mail ml : mails)
+						mailstore.conf.set(String.valueOf(ml.time), null);
 					plugin.mails.remove(uuid);
 					mailstore.update();
 					player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(count) + "件のメールを削除しました。"));
@@ -325,7 +322,7 @@ public class Main extends Plugin implements Listener {
 		ProxiedPlayer player = e.getPlayer();
 		UUID uuid = player.getUniqueId();
 		String name = player.getName();
-		if(!nameData.get(uuid).equals(name))
+		if(!nameData.containsKey(uuid) || !nameData.get(uuid).equals(name))
 			nameData.put(uuid, name);
 		ArrayList<Mail> mails = this.mails.get(uuid);
 		if(mails != null) for(Mail mail : mails)
@@ -420,25 +417,6 @@ public class Main extends Plugin implements Listener {
 			type = type.replace("[original]", message);
 		}
 		return message;
-	}
-
-	public class Args {
-
-		final String[] args;
-		private int index = -1;
-
-		public Args(String[] args){
-			this.args = args;
-		}
-
-		public String get(){
-			return index + 1 < args.length ? args[index++] : "";
-		}
-
-		public String get(int index){
-			return args[index];
-		}
-
 	}
 
 }
