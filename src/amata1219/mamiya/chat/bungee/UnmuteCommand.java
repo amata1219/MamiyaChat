@@ -37,14 +37,14 @@ public class UnmuteCommand extends Command {
 
 		ProxiedPlayer player = (ProxiedPlayer) sender;
 		UUID uuid = player.getUniqueId();
-		UUID tuuid = plugin.names.inverse().get(target);
+		UUID targetUUID = plugin.names.inverse().get(target);
 		HashSet<UUID> set = plugin.muted.get(uuid);
-		if(set == null || set.contains(tuuid)){
+		if(set == null || !set.contains(targetUUID)){
 			sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーはミュートしていません。"));
 			return;
 		}
 
-		set.remove(tuuid);
+		set.remove(targetUUID);
 		if(set.isEmpty())
 			plugin.muted.remove(uuid);
 		sender.sendMessage(new TextComponent(ChatColor.AQUA + target + "さんのミュートを解除しました。"));

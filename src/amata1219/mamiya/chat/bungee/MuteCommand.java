@@ -40,7 +40,7 @@ public class MuteCommand extends Command {
 		UUID tuuid = plugin.names.inverse().get(target);
 		HashSet<UUID> set = plugin.muted.get(uuid);
 		if(set == null)
-			plugin.muted.put(uuid, new HashSet<>());
+			plugin.muted.put(uuid, set = new HashSet<>());
 
 		if(set.contains(tuuid)){
 			sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは既にミュートしています。"));

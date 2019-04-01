@@ -35,7 +35,7 @@ public class MailCommand extends Command {
 				return;
 			}
 
-			String receiver = args.get(1);
+			String receiver = args.next();
 			if(!plugin.names.containsValue(receiver)){
 				sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは存在しません。"));
 				return;
@@ -47,9 +47,12 @@ public class MailCommand extends Command {
 			}
 
 			UUID receiverUUID = plugin.names.inverse().get(receiver);
-			Mail mail = new Mail(System.nanoTime(), receiverUUID, uuid, plugin.coloring(args.get(2, args.length())));
-			if(plugin.getProxy().getPlayer(receiverUUID) != null)
+			Mail mail = new Mail(System.nanoTime(), receiverUUID, uuid, plugin.coloring(args.get(2, args.length() - 1)));
+			ProxiedPlayer receiverr = plugin.getProxy().getPlayer(receiverUUID);
+			if(receiverr != null){
+				receiverr.sendMessage(new TextComponent(ChatColor.AQUA + "メールを受信しました。"));
 				mail.send();
+			}
 
 			ArrayList<Mail> mailList = plugin.mails.get(receiverUUID);
 			if(mailList == null)
@@ -57,6 +60,16 @@ public class MailCommand extends Command {
 			mailList.add(mail);
 			player.sendMessage(new TextComponent(ChatColor.AQUA + receiver + "さんにメールを送信しました。"));
 			player.sendMessage(new TextComponent(mail.getMessage()));
+			break;
+		case "read":
+			if(plugin.mails.containsKey(uuid)){
+				ArrayList<Mail> mails = plugin.mails.get(uuid);
+				player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(mails.size()) + "件のメールを受信しました。"));
+				for(Mail ml : mails)
+					ml.send();
+			}else{
+				player.sendMessage(new TextComponent(ChatColor.RED + "受信したメールはありません。"));
+			}
 			break;
 		case "clear":
 			if(!plugin.mails.containsKey(uuid)){

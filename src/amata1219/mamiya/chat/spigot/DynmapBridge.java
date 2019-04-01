@@ -49,10 +49,6 @@ public class DynmapBridge implements Listener, PluginMessageListener {
 		messenger.unregisterOutgoingPluginChannel(plugin, "BungeeCord");
 	}
 
-	public void broadcast(String playerName, String message){
-		dynmap.sendBroadcastToWeb(playerName, message);
-	}
-
 	@SuppressWarnings("unchecked")
 	@EventHandler
 	public void onChat(DynmapWebChatEvent e){
@@ -62,6 +58,7 @@ public class DynmapBridge implements Listener, PluginMessageListener {
 
 		Player player = players.get(random.nextInt(players.size()));
 		player.sendPluginMessage(Main.getPlugin(), "BungeeCord", ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "WebChat", e.getName(), e.getMessage()));
+		e.setCancelled(true);
 	}
 
 	@Override
@@ -76,7 +73,13 @@ public class DynmapBridge implements Listener, PluginMessageListener {
 		if(!in.readUTF().equals("Dynmap"))
 			return;
 
-		dynmap.sendBroadcastToWeb(in.readUTF(), in.readUTF());
+		String name = in.readUTF();
+		String message = in.readUTF();
+		Player speaker = Main.getPlugin().getServer().getPlayerExact(name);
+		if(speaker != null)
+			dynmap.postPlayerMessageToWeb(speaker, message);
+		else
+			dynmap.sendBroadcastToWeb(name, message);
 	}
 
 }

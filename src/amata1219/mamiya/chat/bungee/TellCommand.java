@@ -31,7 +31,7 @@ public class TellCommand extends Command {
 			String senderName = sender instanceof ProxiedPlayer ? ((ProxiedPlayer) sender).getName() : "Console";
 			String message = plugin.privateChatFormat.replace("[sender]", senderName)
 					.replace("[receiver]", player.getName())
-					.replace("[message]", plugin.formatMessage(plugin.coloring(args.get(1, args.length() - 1))));
+					.replace("[message]", plugin.formatMessage(plugin.coloring(args.get(1, args.length() - 1)), plugin.notUseJapanize.contains(player.getUniqueId())));
 			TextComponent component = new TextComponent(message);
 			sender.sendMessage(component);
 			player.sendMessage(component);

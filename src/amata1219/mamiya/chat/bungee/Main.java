@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
+
 import java.util.UUID;
 
 import com.google.common.collect.HashBiMap;
@@ -12,7 +13,6 @@ import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteStreams;
 
 import amata1219.mamiya.chat.ByteArrayDataMaker;
-import amata1219.mamiya.chat.Converter;
 import net.md_5.bungee.UserConnection;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -31,12 +31,13 @@ public class Main extends Plugin implements Listener {
 
 	public static Main plugin;
 
-	public Config config, mutedata, maildata, playerdata;
+	public Config config, mutedata, playerdata, maildata, namedata;
 	public ServerInfo dynmapServer;
 	public String mainChatFormat, normalFormat, convertedFormat, privateChatFormat, mailFormat;
 	public final HashBiMap<UUID, String> names = HashBiMap.create();
 	public final HashMap<UUID, HashSet<UUID>> muted = new HashMap<>();
 	public final HashMap<UUID, ArrayList<Mail>> mails = new HashMap<>();
+	public final HashSet<UUID> notUseJapanize = new HashSet<>();
 	public long maildays = 2592000000000000L;
 
 
@@ -44,20 +45,11 @@ public class Main extends Plugin implements Listener {
 	public void onEnable(){
 		plugin = this;
 
-		/*
-		 * bugs
-		 *
-		 * section -> tula
-		 * nanashityatto
-		 *
-		 */
-
 		config = new Config("config.yml");
 
 		loadValues();
 
 		mutedata = new Config("mutedata.yml");
-
 		Configuration datastore = mutedata.config;
 		for(String key : datastore.getKeys()){
 			UUID uuid = UUID.fromString(key);
@@ -72,8 +64,13 @@ public class Main extends Plugin implements Listener {
 			muted.put(uuid, set);
 		}
 
+		playerdata = new Config("playerdata.yml");
+		Configuration players = playerdata.config;
+		for(String uuid : players.getStringList("Players"))
+			notUseJapanize.add(UUID.fromString(uuid));
+
+
 		maildata = new Config("maildata.yml");
-		maildata.saveDefault();
 		Configuration mailstore = maildata.config;
 		for(String key : mailstore.getKeys()){
 			long time = Long.parseLong(key);
@@ -90,18 +87,20 @@ public class Main extends Plugin implements Listener {
 			mails.add(new Mail(time, receiver, UUID.fromString(data[1]), data[2]));
 		}
 
-		playerdata = new Config("playerdata.yml");
-		playerdata.saveDefault();
-		Configuration plconf = playerdata.config;
+		namedata = new Config("namedata.yml");
+		Configuration plconf = namedata.config;
 		for(String key : plconf.getKeys())
 			names.put(UUID.fromString(key), plconf.getString(key));
 
 		PluginManager manager = getProxy().getPluginManager();
 
-		manager.registerCommand(this, new TellCommand("tell", "mamiya.chat.tell", "msg", "message", "mctell"));
-		manager.registerCommand(this, new MailCommand("mail", "mamiya.chat.mail", "mcmail"));
-		manager.registerCommand(this, new MuteCommand("mute", "mamiya.chat.mute", "mcmute"));
-		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat.unmute", "mcunmute"));
+		manager.registerCommand(this, new MamiyaChatCommand("mamiyachat", "mamiya.chat.admin", "mchat"));
+		manager.registerCommand(this, new TellCommand("tell", "mamiya.chat", "msg", "message"));
+		manager.registerCommand(this, new MailCommand("mail", "mamiya.chat", "mmail"));
+		manager.registerCommand(this, new MuteCommand("mute", "mamiya.chat", "mmute"));
+		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat", "munmute"));
+		manager.registerCommand(this, new MuteListCommand("mutelist", "mamiya.chat", "mutel", "mmutelist"));
+		manager.registerCommand(this, new JapanizeCommand("japanize", "mamiya.chat", "jp"));
 
 		manager.registerListener(this, this);
 	}
@@ -127,6 +126,13 @@ public class Main extends Plugin implements Listener {
 		}
 		mutedata.save();
 
+		Configuration players = playerdata.config;
+		List<String> uuids = new ArrayList<>(notUseJapanize.size());
+		for(UUID uuid : notUseJapanize)
+			uuids.add(uuid.toString());
+		players.set("Players", uuids);
+		playerdata.save();
+
 		Configuration mailstore = maildata.config;
 		for(ArrayList<Mail> list : mails.values()){
 			for(Mail mail : list){
@@ -134,6 +140,11 @@ public class Main extends Plugin implements Listener {
 			}
 		}
 		maildata.save();
+
+		Configuration namestore = namedata.config;
+		for(Entry<UUID, String> entry : names.entrySet())
+			namestore.set(entry.getKey().toString(), entry.getValue());
+		namedata.save();
 	}
 
 	public void loadValues(){
@@ -160,49 +171,41 @@ public class Main extends Plugin implements Listener {
 		if(!names.containsKey(uuid) || !names.get(uuid).equals(name))
 			names.put(uuid, name);
 
-		if(mails.containsKey(uuid)) for(Mail mail : mails.get(uuid))
-			mail.send();
+		if(mails.containsKey(uuid)){
+			ArrayList<Mail> mails = this.mails.get(uuid);
+			player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(mails.size()) + "件のメールを受信しました。"));
+			for(Mail mail : mails)
+				mail.send();
+		}
 	}
 
 	@EventHandler
 	public void onChat(ChatEvent e){
-		/*
-		 * ミュート判定をこちらで行う都合により、こちらで各プレイヤーにメッセージ送信
-		 * DynmapのためテキストはpluginMessageで送る(プレイヤー名、メッセージ)
-		 *
-		 * 着色(&を§に変換)
-		 * アンチスパム(挨拶が引っかからないようにクールダウン式にすると良いかも)
-		 *  - 最終発言と同じならキャンセル
-		 *  - 最終発言は3秒間保持
-		 *  - 悪質なやつはずば抜けて悪質なのでもう無視(そもそもそんなやつたまにしか来ない)
-		 *  ローマ字変換(これあるだけで神になれる)
-		 */
-		System.out.println("onChat: 1");
-
 		if(e.isCancelled() || e.isCommand())
 			return;
 
-		System.out.println("onChat: 2");
-
-		UserConnection sender = (UserConnection) e.getSender();
-		UUID senderUUID = sender.getUniqueId();
-		String senderName = sender.getName();
-
-		String message = e.getMessage();
-		if(message.indexOf("&") != -1)
-			message = coloring(message);
-
-		TextComponent component = new TextComponent(mainChatFormat.replace("[player]", senderName).replace("[message]", formatMessage(message)));
-		for(ProxiedPlayer player : getProxy().getPlayers()){
-			HashSet<UUID> set = muted.get(player.getUniqueId());
-			if(set == null || !set.contains(senderUUID))
-				player.sendMessage(component);
-		}
-
-		byte[] dynmap = ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "Dynmap", senderName, message);
-		dynmapServer.sendData("BungeeCord", dynmap);
-
 		e.setCancelled(true);
+
+		Async.write(() -> {
+			UserConnection sender = (UserConnection) e.getSender();
+			UUID senderUUID = sender.getUniqueId();
+			String senderName = sender.getName();
+
+			String message = e.getMessage();
+			if(message.indexOf("&") != -1)
+				message = coloring(message);
+
+			message = formatMessage(message, notUseJapanize.contains(senderUUID));
+			TextComponent component = new TextComponent(mainChatFormat.replace("[player]", senderName).replace("[message]", message));
+			for(ProxiedPlayer player : getProxy().getPlayers()){
+				HashSet<UUID> set = muted.get(player.getUniqueId());
+				if(set == null || !set.contains(senderUUID))
+					player.sendMessage(component);
+			}
+
+			byte[] dynmap = ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "Dynmap", senderName, message);
+			dynmapServer.sendData("BungeeCord", dynmap);
+		}).execute();
 	}
 
 	@EventHandler
@@ -218,11 +221,11 @@ public class Main extends Plugin implements Listener {
 		if(!in.readUTF().equals("WebChat"))
 			return;
 
-		String format = this.mainChatFormat;
-		format = format.replace("[player]", in.readUTF());
-
-		String message = in.readUTF();
-		format = format.replace("[message]", formatMessage(message));
+		String name = in.readUTF();
+		if(name == null || name.isEmpty())
+			name = "WEB";
+		String message = mainChatFormat.replace("[player]", name)
+				.replace("[message]", formatMessage(in.readUTF(), false));
 
 		TextComponent component = new TextComponent(message);
 		for(ProxiedPlayer player : getProxy().getPlayers())
@@ -233,9 +236,22 @@ public class Main extends Plugin implements Listener {
 		return ChatColor.translateAlternateColorCodes('&', text);
 	}
 
-	public String formatMessage(String message){
-		return Converter.canConvert(message) ? convertedFormat.replace("[original]", message)
+	public String formatMessage(String message, boolean notUseJapanize){
+		return Converter.canConvert(message) && !notUseJapanize ? convertedFormat.replace("[original]", message)
 				.replace("[converted]", Converter.convert(message)) : normalFormat.replace("[original]", message);
+	}
+
+	public interface Async extends Runnable {
+
+		public static Async write(Async async){
+			return async;
+		}
+
+		public default void execute(){
+			Main plugin = Main.plugin;
+			plugin.getProxy().getScheduler().runAsync(plugin, this);
+		}
+
 	}
 
 }

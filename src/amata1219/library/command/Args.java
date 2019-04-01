@@ -25,7 +25,7 @@ public class Args {
 	}
 
 	public boolean hasNext(){
-		return index + 1 < args.length;
+		return index < args.length;
 	}
 
 	public String next(){
@@ -37,7 +37,7 @@ public class Args {
 			return false;
 
 		try{
-			type.getChecker().accept(args[index + 1]);
+			type.getChecker().accept(args[index]);
 		}catch(NumberFormatException e){
 			return false;
 		}

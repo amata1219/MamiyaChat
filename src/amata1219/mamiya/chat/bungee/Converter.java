@@ -1,4 +1,4 @@
-package amata1219.mamiya.chat;
+package amata1219.mamiya.chat.bungee;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -81,7 +81,7 @@ public class Converter {
 	}
 
 	public static boolean canConvert(String text){
-		return text.matches("[ \\uFF61-\\uFF9F]+");
+		return text.getBytes().length == text.length() || !text.matches("[ \\uFF61-\\uFF9F]+");
 	}
 
 	public static String convert(String text){
@@ -106,39 +106,38 @@ public class Converter {
 			StringBuilder builder = new StringBuilder();
 			String line = "";
 			while((line = reader.readLine()) != null){
-				StringBuilder mBuilder = new StringBuilder();
-				int mLine = 0, mIndex = 0;
-				while(mIndex < line.length()){
-					int start = 0, end = 0;
-					if(mLine < 3){
-						start = line.indexOf("[", mIndex);
-						end = line.indexOf("]", mIndex);
+				StringBuilder buffer = new StringBuilder();
+				int level = 0, index = 0;
+				while(index < line.length()){
+					if(level < 3){
+						int start = line.indexOf("[", index);
+						int end = line.indexOf("]", index);
 						if(start == -1)
 							break;
 
 						if(start < end){
-							mLine++;
-							mIndex = start + 1;
+							level++;
+							index = start + 1;
 						}else{
-							mLine--;
-							mIndex = end + 1;
+							level--;
+							index = end + 1;
 						}
 					}else{
-						start = line.indexOf("\"", mIndex);
-						end = line.indexOf("\"", start + 1);
+						int start = line.indexOf("\"", index);
+						int end = line.indexOf("\"", start + 1);
 						if(start == -1 || end == -1)
 							break;
 
-						mBuilder.append(line.substring(start, end + 1));
-						int n = line.indexOf("[", end);
-						if(n == -1)
+						buffer.append(line.substring(start + 1, end));
+						int next = line.indexOf("]", end);
+						if(next == -1)
 							break;
 
-						mLine--;
-						mIndex = n + 1;
+						level--;
+						index = next + 1;
 					}
 				}
-				builder.append(mBuilder.toString());
+				builder.append(buffer.toString());
 			}
 
 			return builder.toString();
@@ -155,80 +154,83 @@ public class Converter {
 
 	public static String toHiragana(String text){
 		StringBuilder builder = new StringBuilder();
-		String line = "";
+		String last = "";
 		for(int i = 0; i < text.length(); i++){
-			String tmp = text.substring(i, i + 1);
+			char tmp = text.charAt(i);
 			switch(tmp){
-			case "a":
-				builder.append(getHiragana(line, 0));
-				line = "";
+			case 'a':
+				builder.append(getHiragana(last, 0));
+				last = "";
 				break;
-			case "i":
-				builder.append(getHiragana(line, 1));
-				line = "";
+			case 'i':
+				builder.append(getHiragana(last, 1));
+				last = "";
 				break;
-			case "u":
-				builder.append(getHiragana(line, 2));
-				line = "";
+			case 'u':
+				builder.append(getHiragana(last, 2));
+				last = "";
 				break;
-			case "e":
-				builder.append(getHiragana(line, 3));
-				line = "";
+			case 'e':
+				builder.append(getHiragana(last, 3));
+				last = "";
 				break;
-			case "o":
-				builder.append(getHiragana(line, 4));
-				line = "";
+			case 'o':
+				builder.append(getHiragana(last, 4));
+				last = "";
+				break;
+			case ' ':
+				builder.append(" ");
+				last = "";
 				break;
 			default:
-				if(line.equals("n") && !line.equals("y")){
+				if(last.equals("n") && !last.equals("y")){
 					builder.append("ん");
-					line = "";
-					if(tmp.equals("n"))
+					last = "";
+					if(tmp == 'n')
 						continue;
 				}
-				char firstChar = tmp.charAt(0);
-				if(Character.isLetter(firstChar)){
-					if(Character.isUpperCase(firstChar)){
-						builder.append(line + tmp);
-						line = "";
-					}else if(line.equals(tmp)){
+
+				if(Character.isLetter(tmp)){
+					if(Character.isUpperCase(tmp)){
+						builder.append(last + tmp);
+						last = "";
+					}else if(!last.isEmpty() && last.charAt(0) == tmp){
 						builder.append("っ");
-						line = tmp;
+						last = String.valueOf(tmp);
 					}else{
-						line = line + tmp;
+						last = last + tmp;
 					}
 				}else{
 					switch(tmp){
-					case ",":
-						builder.append(line + "、");
+					case ',':
+						builder.append(last + "、");
 						break;
-					case ".":
-						builder.append(line + "。");
+					case '.':
+						builder.append(last + "。");
 						break;
-					case "-":
-						builder.append(line + "ー");
+					case '-':
+						builder.append(last + "ー");
 						break;
-					case "[":
-						builder.append(line + "「");
+					case '[':
+						builder.append(last + "「");
 						break;
-					case "]":
-						builder.append(line + "」");
+					case ']':
+						builder.append(last + "」");
 						break;
-					case "!":
-						builder.append(line + "！");
+					case '!':
+						builder.append(last + "！");
 						break;
-					case "?":
-						builder.append(line + "？");
+					case '?':
+						builder.append(last + "？");
 						break;
 					default:
-						break;
+						continue;
 					}
-					line = "";
+					last = "";
 				}
-				break;
 			}
 		}
-		return builder.append(line).toString();
+		return builder.append(last).toString();
 	}
 
 	private static String getHiragana(String s, int index){
