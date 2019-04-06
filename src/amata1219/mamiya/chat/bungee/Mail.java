@@ -21,7 +21,7 @@ public class Mail {
 	public void send(){
 		Main plugin = Main.plugin;
 		ProxiedPlayer player = plugin.getProxy().getPlayer(receiver);
-		if(player == null)
+		if(player == null || plugin.isInvalidAccess(player))
 			return;
 
 		player.sendMessage(new TextComponent(getMessage()));

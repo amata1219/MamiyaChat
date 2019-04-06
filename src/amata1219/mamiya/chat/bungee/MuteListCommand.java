@@ -23,6 +23,8 @@ public class MuteListCommand extends Command {
 		}
 
 		ProxiedPlayer player = (ProxiedPlayer) sender;
+		if(Main.plugin.isInvalidAccess(player))
+			return;
 		HashSet<UUID> muted = Main.plugin.muted.get(player.getUniqueId());
 		if(muted == null){
 			player.sendMessage(new TextComponent(ChatColor.RED + "ミュートしているプレイヤーはいません。"));

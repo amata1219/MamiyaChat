@@ -1,6 +1,6 @@
 package amata1219.mamiya.chat.bungee;
 
-import amata1219.library.command.Args;
+import amata1219.mamiya.chat.command.Args;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -20,6 +20,9 @@ public class TellCommand extends Command {
 		Args args = new Args(strs);
 		String name = args.next();
 		ProxiedPlayer player = plugin.getProxy().getPlayer(name);
+		if(!plugin.isInvalidAccess(player))
+			return;
+
 		if(player == null){
 			sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーはオフライン又は存在しません。"));
 			return;

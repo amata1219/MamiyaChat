@@ -18,6 +18,7 @@ import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
+import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.ChatEvent;
 import net.md_5.bungee.api.event.PluginMessageEvent;
 import net.md_5.bungee.api.event.PostLoginEvent;
@@ -32,6 +33,7 @@ public class Main extends Plugin implements Listener {
 	public static Main plugin;
 
 	public Config config, mutedata, playerdata, maildata, namedata;
+	public final HashSet<String> servers = new HashSet<>();
 	public ServerInfo dynmapServer;
 	public String mainChatFormat, normalFormat, convertedFormat, privateChatFormat, mailFormat;
 	public final HashBiMap<UUID, String> names = HashBiMap.create();
@@ -157,6 +159,9 @@ public class Main extends Plugin implements Listener {
 		normalFormat = coloring(config.getString("MessageFormat.Normal"));
 		convertedFormat = coloring(config.getString("MessageFormat.Converted"));
 
+		servers.clear();
+		servers.addAll(config.getStringList("Servers"));
+
 		dynmapServer = getProxy().getServerInfo(config.getString("DynmapServer"));
 
 		maildays = config.getInt("MailDays") * 86400000000000L;
@@ -171,6 +176,9 @@ public class Main extends Plugin implements Listener {
 		if(!names.containsKey(uuid) || !names.get(uuid).equals(name))
 			names.put(uuid, name);
 
+		if(isInvalidAccess(player))
+			return;
+
 		if(mails.containsKey(uuid)){
 			ArrayList<Mail> mails = this.mails.get(uuid);
 			player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(mails.size()) + "件のメールを受信しました。"));
@@ -184,10 +192,13 @@ public class Main extends Plugin implements Listener {
 		if(e.isCancelled() || e.isCommand())
 			return;
 
+		UserConnection sender = (UserConnection) e.getSender();
+		if(isInvalidAccess(sender.getServer()))
+			return;
+
 		e.setCancelled(true);
 
 		Async.write(() -> {
-			UserConnection sender = (UserConnection) e.getSender();
 			UUID senderUUID = sender.getUniqueId();
 			String senderName = sender.getName();
 
@@ -196,8 +207,12 @@ public class Main extends Plugin implements Listener {
 				message = coloring(message);
 
 			message = formatMessage(message, notUseJapanize.contains(senderUUID));
-			TextComponent component = new TextComponent(mainChatFormat.replace("[player]", senderName).replace("[message]", message));
+			TextComponent component = new TextComponent(message = mainChatFormat.replace("[player]", senderName).replace("[message]", message));
+			System.out.println(message);
 			for(ProxiedPlayer player : getProxy().getPlayers()){
+				if(isInvalidAccess(player))
+					continue;
+
 				HashSet<UUID> set = muted.get(player.getUniqueId());
 				if(set == null || !set.contains(senderUUID))
 					player.sendMessage(component);
@@ -222,14 +237,15 @@ public class Main extends Plugin implements Listener {
 			return;
 
 		String name = in.readUTF();
-		if(name == null || name.isEmpty())
-			name = "WEB";
-		String message = mainChatFormat.replace("[player]", name)
+		String message = mainChatFormat.replace("[player]", "[WEB]" + ((name == null || name.isEmpty()) ? "" : name))
 				.replace("[message]", formatMessage(in.readUTF(), false));
 
+		System.out.println(message);
 		TextComponent component = new TextComponent(message);
-		for(ProxiedPlayer player : getProxy().getPlayers())
-			player.sendMessage(component);
+		for(ProxiedPlayer player : getProxy().getPlayers()){
+			if(isInvalidAccess(player))
+				player.sendMessage(component);
+		}
 	}
 
 	public String coloring(String text){
@@ -239,6 +255,14 @@ public class Main extends Plugin implements Listener {
 	public String formatMessage(String message, boolean notUseJapanize){
 		return Converter.canConvert(message) && !notUseJapanize ? convertedFormat.replace("[original]", message)
 				.replace("[converted]", Converter.convert(message)) : normalFormat.replace("[original]", message);
+	}
+
+	public boolean isInvalidAccess(Server server){
+		return !servers.contains(server.getInfo().getName());
+	}
+
+	public boolean isInvalidAccess(ProxiedPlayer player){
+		return !servers.contains(player.getServer().getInfo().getName());
 	}
 
 	public interface Async extends Runnable {

@@ -24,6 +24,10 @@ public class UnmuteCommand extends Command {
 			return;
 		}
 
+		ProxiedPlayer player = (ProxiedPlayer) sender;
+		if(plugin.isInvalidAccess(player))
+			return;
+
 		if(args.length == 0){
 			sender.sendMessage(new TextComponent(ChatColor.RED + "プレイヤーを指定して下さい。"));
 			return;
@@ -35,7 +39,6 @@ public class UnmuteCommand extends Command {
 			return;
 		}
 
-		ProxiedPlayer player = (ProxiedPlayer) sender;
 		UUID uuid = player.getUniqueId();
 		UUID targetUUID = plugin.names.inverse().get(target);
 		HashSet<UUID> set = plugin.muted.get(uuid);

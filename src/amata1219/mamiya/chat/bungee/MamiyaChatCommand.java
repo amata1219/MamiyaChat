@@ -1,6 +1,6 @@
 package amata1219.mamiya.chat.bungee;
 
-import amata1219.library.command.Args;
+import amata1219.mamiya.chat.command.Args;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -18,9 +18,9 @@ public class MamiyaChatCommand extends Command {
 		switch(args.next()){
 		case "reload":
 			Main plugin = Main.plugin;
-			plugin.config.update();
+			plugin.config.reload();
 			plugin.loadValues();
-			sender.sendMessage(new TextComponent(ChatColor.AQUA + "コンフィグを最読み込みしました。"));
+			sender.sendMessage(new TextComponent(ChatColor.AQUA + "コンフィグを再読み込みしました。"));
 			break;
 		default:
 			break;

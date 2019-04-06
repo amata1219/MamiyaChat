@@ -1,4 +1,4 @@
-package amata1219.library.command;
+package amata1219.mamiya.chat.command;
 
 public class Args {
 

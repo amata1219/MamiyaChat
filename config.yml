@@ -5,5 +5,7 @@ TextFormat:
 MessageFormat:
   Normal: "[original]"
   Converted: "[converted]&7([original]&7)"
+Servers:
+- "main"
 DynmapServer: "main"
 MailDays: 30

@@ -3,7 +3,7 @@ package amata1219.mamiya.chat.bungee;
 import java.util.ArrayList;
 import java.util.UUID;
 
-import amata1219.library.command.Args;
+import amata1219.mamiya.chat.command.Args;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -26,6 +26,9 @@ public class MailCommand extends Command {
 		}
 
 		ProxiedPlayer player = (ProxiedPlayer) sender;
+		if(plugin.isInvalidAccess(player))
+			return;
+
 		UUID uuid = player.getUniqueId();
 		Args args = new Args(strs);
 		switch(args.next()){
