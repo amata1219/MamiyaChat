@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.HashBiMap;
 import com.google.common.io.ByteArrayDataInput;
@@ -21,7 +22,7 @@ import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.ChatEvent;
 import net.md_5.bungee.api.event.PluginMessageEvent;
-import net.md_5.bungee.api.event.PostLoginEvent;
+import net.md_5.bungee.api.event.ServerSwitchEvent;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.api.plugin.PluginManager;
@@ -168,7 +169,7 @@ public class Main extends Plugin implements Listener {
 	}
 
 	@EventHandler
-	public void onJoin(PostLoginEvent e){
+	public void onJoin(ServerSwitchEvent e){
 		ProxiedPlayer player = e.getPlayer();
 		UUID uuid = player.getUniqueId();
 		String name = player.getName();
@@ -176,15 +177,22 @@ public class Main extends Plugin implements Listener {
 		if(!names.containsKey(uuid) || !names.get(uuid).equals(name))
 			names.put(uuid, name);
 
-		if(isInvalidAccess(player))
-			return;
+		getProxy().getScheduler().schedule(this, new Runnable(){
 
-		if(mails.containsKey(uuid)){
-			ArrayList<Mail> mails = this.mails.get(uuid);
-			player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(mails.size()) + "件のメールを受信しました。"));
-			for(Mail mail : mails)
-				mail.send();
-		}
+			@Override
+			public void run() {
+				if(isInvalidAccess(player))
+					return;
+
+				if(mails.containsKey(uuid)){
+					ArrayList<Mail> mails = Main.plugin.mails.get(uuid);
+					player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(mails.size()) + "件のメールを受信しました。"));
+					for(Mail mail : mails)
+						mail.send();
+				}
+			}
+
+		}, 250, TimeUnit.MILLISECONDS);
 	}
 
 	@EventHandler
