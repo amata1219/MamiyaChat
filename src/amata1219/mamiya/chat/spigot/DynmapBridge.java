@@ -57,7 +57,10 @@ public class DynmapBridge implements Listener, PluginMessageListener {
 			return;
 
 		Player player = players.get(random.nextInt(players.size()));
-		player.sendPluginMessage(Main.getPlugin(), "BungeeCord", ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "WebChat", e.getName(), e.getMessage()));
+		String name = e.getName();
+		String message = e.getMessage();
+		player.sendPluginMessage(Main.getPlugin(), "BungeeCord", ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "WebChat", name, message));
+		dynmap.sendBroadcastToWeb(name, message);
 		e.setCancelled(true);
 	}
 

@@ -81,7 +81,7 @@ public class Converter {
 	}
 
 	public static boolean canConvert(String text){
-		return text.getBytes().length == text.length() || !text.matches("[\\uFF61-\\uFF9F]+");
+		return text.getBytes().length == text.length();// || !text.matches("[\\uFF61-\\uFF9F]+");
 	}
 
 	public static String convert(String text){
