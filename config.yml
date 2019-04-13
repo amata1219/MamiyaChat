@@ -1,6 +1,6 @@
 TextFormat:
-  MainChat: "[server][world][player]&a:&r [message]"
-  PrivateChat: "[[sender] > [receiver]]&a&r [message]"
+  MainChat: "[server][player]&a:&r [message]"
+  PrivateChat: "[[s_server][sender] > [r_server][receiver]]&a&r [message]"
   Mail: "[[sender] > [receiver]]&a:&r [message]"
   Broadcast: "[message]"
 MessageFormat:
@@ -11,5 +11,3 @@ Servers:
 DynmapServer: "main"
 MailDays: 30
 MailMessage: "&bメール受信メッセージ編集機能（[size]件のメールを受信しました。）\n/mail clearで削除できます。"
-ServerAliases:
-- "main:&b[メイン]"

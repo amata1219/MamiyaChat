@@ -31,9 +31,20 @@ public class TellCommand extends Command {
 		if(!args.hasNext()){
 			sender.sendMessage(new TextComponent(ChatColor.RED + "メッセージを入力して下さい。"));
 		}else{
-			String senderName = sender instanceof ProxiedPlayer ? ((ProxiedPlayer) sender).getName() : "Console";
+			String senderName = null;
+			String senderServer = null;
+			if(sender instanceof ProxiedPlayer){
+				ProxiedPlayer plyr = (ProxiedPlayer) sender;
+				senderName = plyr.getName();
+				senderServer = plyr.getServer().getInfo().getName();
+			}else{
+				senderName = "Console";
+				senderServer = "";
+			}
 			String message = plugin.privateChatFormat.replace("[sender]", senderName)
+					.replace("[s_server]", senderServer)
 					.replace("[receiver]", player.getName())
+					.replace("[r_server]", player.getServer().getInfo().getName())
 					.replace("[message]", plugin.formatMessage(plugin.coloring(args.get(1, args.length() - 1)), plugin.notUseJapanize.contains(player.getUniqueId())));
 			TextComponent component = new TextComponent(message);
 			sender.sendMessage(component);

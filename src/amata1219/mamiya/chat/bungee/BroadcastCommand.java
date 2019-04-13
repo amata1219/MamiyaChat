@@ -23,8 +23,10 @@ public class BroadcastCommand extends Command {
 			plugin.dynmapServer.sendData("BungeeCord", dynmap);
 			TextComponent component = new TextComponent(message = plugin.broadcastFormat.replace("[message]", message));
 			System.out.println(message);
-			for(ProxiedPlayer player : plugin.getProxy().getPlayers())
-				player.sendMessage(component);
+			for(ProxiedPlayer player : plugin.getProxy().getPlayers()){
+				if(!plugin.isInvalidAccess(player))
+					player.sendMessage(component);
+			}
 		});
 	}
 
