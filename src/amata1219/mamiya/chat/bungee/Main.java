@@ -109,6 +109,7 @@ public class Main extends Plugin implements Listener {
 		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat", "munmute"));
 		manager.registerCommand(this, new MuteListCommand("mutelist", "mamiya.chat", "mutel", "mmutelist"));
 		manager.registerCommand(this, new JapanizeCommand("japanize", "mamiya.chat", "jp"));
+		manager.registerCommand(this, new BroadcastCommand("bcast", "mamiya.chat.admin", "mbcast"));
 
 		manager.registerListener(this, this);
 	}
