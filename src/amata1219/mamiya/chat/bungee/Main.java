@@ -170,7 +170,7 @@ public class Main extends Plugin implements Listener {
 		servers.clear();
 		for(String serverAliase : config.getStringList("Servers")){
 			String[] strs = serverAliase.split(":");
-			servers.put(strs[0], coloring(strs[1]));
+			servers.put(strs[0], strs.length < 2 ? "" : coloring(strs[1]));
 		}
 
 		dynmapServer = getProxy().getServerInfo(config.getString("DynmapServer"));
@@ -229,7 +229,9 @@ public class Main extends Plugin implements Listener {
 			Matcher matcher = urlMatcher.matcher(message);
 
 			message = formatMessage(message, notUseJapanize.contains(senderUUID));
-			TextComponent component = new TextComponent(message = mainChatFormat.replace("[player]", senderName).replace("[message]", message).replace("[server]", sender.getServer().getInfo().getName()));
+			byte[] dynmap = ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "Dynmap", senderName, message);
+			dynmapServer.sendData("BungeeCord", dynmap);
+			TextComponent component = new TextComponent(message = mainChatFormat.replace("[player]", senderName).replace("[message]", message).replace("[server]", servers.get(sender.getServer().getInfo().getName())));
 			if(matcher.find())
 				component.setClickEvent(new ClickEvent(Action.OPEN_URL, matcher.group()));
 			System.out.println(message);
@@ -241,9 +243,6 @@ public class Main extends Plugin implements Listener {
 				if(set == null || !set.contains(senderUUID))
 					player.sendMessage(component);
 			}
-
-			byte[] dynmap = ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "Dynmap", senderName, message);
-			dynmapServer.sendData("BungeeCord", dynmap);
 		}).execute();
 	}
 
@@ -267,7 +266,7 @@ public class Main extends Plugin implements Listener {
 		System.out.println(message);
 		TextComponent component = new TextComponent(message);
 		for(ProxiedPlayer player : getProxy().getPlayers()){
-			if(isInvalidAccess(player))
+			if(!isInvalidAccess(player))
 				player.sendMessage(component);
 		}
 	}
