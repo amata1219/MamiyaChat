@@ -73,16 +73,18 @@ public class DynmapBridge implements Listener, PluginMessageListener {
 		if(!in.readUTF().equals("MamiyaChat"))
 			return;
 
-		if(!in.readUTF().equals("Dynmap"))
-			return;
-
-		String name = in.readUTF();
-		String message = in.readUTF();
-		Player speaker = Main.getPlugin().getServer().getPlayerExact(name);
-		if(speaker != null)
-			dynmap.postPlayerMessageToWeb(speaker, message);
-		else
-			dynmap.sendBroadcastToWeb(name, message);
+		String type = in.readUTF();
+		if(type.equals("Dynmap")){
+			String name = in.readUTF();
+			String message = in.readUTF();
+			Player speaker = Main.getPlugin().getServer().getPlayerExact(name);
+			if(speaker != null)
+				dynmap.postPlayerMessageToWeb(speaker, message);
+			else
+				dynmap.sendBroadcastToWeb(name, message);
+		}else if(type.equals("Broadcast")){
+			dynmap.sendBroadcastToWeb("Broadcast", in.readUTF());
+		}
 	}
 
 }

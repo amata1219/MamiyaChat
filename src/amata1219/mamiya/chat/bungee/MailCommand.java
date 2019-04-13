@@ -67,7 +67,7 @@ public class MailCommand extends Command {
 		case "read":
 			if(plugin.mails.containsKey(uuid)){
 				ArrayList<Mail> mails = plugin.mails.get(uuid);
-				player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(mails.size()) + "件のメールを受信しました。"));
+				player.sendMessage(new TextComponent(plugin.mailMessage.replace("[size]", String.valueOf(mails.size()))));
 				for(Mail ml : mails)
 					ml.send();
 			}else{

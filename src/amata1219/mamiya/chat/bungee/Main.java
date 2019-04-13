@@ -8,6 +8,8 @@ import java.util.Map.Entry;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.google.common.collect.HashBiMap;
 import com.google.common.io.ByteArrayDataInput;
@@ -16,6 +18,8 @@ import com.google.common.io.ByteStreams;
 import amata1219.mamiya.chat.ByteArrayDataMaker;
 import net.md_5.bungee.UserConnection;
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ClickEvent.Action;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -34,14 +38,15 @@ public class Main extends Plugin implements Listener {
 	public static Main plugin;
 
 	public Config config, mutedata, playerdata, maildata, namedata;
-	public final HashSet<String> servers = new HashSet<>();
 	public ServerInfo dynmapServer;
-	public String mainChatFormat, normalFormat, convertedFormat, privateChatFormat, mailFormat;
+	public String mainChatFormat, normalFormat, convertedFormat, privateChatFormat, mailFormat, broadcastFormat, mailMessage;
 	public final HashBiMap<UUID, String> names = HashBiMap.create();
 	public final HashMap<UUID, HashSet<UUID>> muted = new HashMap<>();
 	public final HashMap<UUID, ArrayList<Mail>> mails = new HashMap<>();
 	public final HashSet<UUID> notUseJapanize = new HashSet<>();
+	public final HashMap<String, String> servers = new HashMap<>();
 	public long maildays = 2592000000000000L;
+	public final Pattern urlMatcher = Pattern.compile("(http://|https://){1}[\\w\\.\\-/:\\#\\?\\=\\&\\;\\%\\~\\+]+", Pattern.CASE_INSENSITIVE);
 
 
 	@Override
@@ -156,16 +161,22 @@ public class Main extends Plugin implements Listener {
 		mainChatFormat = coloring(config.getString("TextFormat.MainChat"));
 		privateChatFormat = coloring(config.getString("TextFormat.PrivateChat"));
 		mailFormat = coloring(config.getString("TextFormat.Mail"));
+		broadcastFormat = coloring(config.getString("TextFormat.Broadcast"));
 
 		normalFormat = coloring(config.getString("MessageFormat.Normal"));
 		convertedFormat = coloring(config.getString("MessageFormat.Converted"));
 
 		servers.clear();
-		servers.addAll(config.getStringList("Servers"));
+		for(String serverAliase : config.getStringList("Servers")){
+			String[] strs = serverAliase.split(":");
+			servers.put(strs[0], coloring(strs[1]));
+		}
 
 		dynmapServer = getProxy().getServerInfo(config.getString("DynmapServer"));
 
 		maildays = config.getInt("MailDays") * 86400000000000L;
+
+		mailMessage = config.getString("MailMessage");
 	}
 
 	@EventHandler
@@ -186,7 +197,7 @@ public class Main extends Plugin implements Listener {
 
 				if(mails.containsKey(uuid)){
 					ArrayList<Mail> mails = Main.plugin.mails.get(uuid);
-					player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(mails.size()) + "件のメールを受信しました。"));
+					player.sendMessage(new TextComponent(mailMessage.replace("[size]", String.valueOf(mails.size()))));
 					for(Mail mail : mails)
 						mail.send();
 				}
@@ -214,8 +225,12 @@ public class Main extends Plugin implements Listener {
 			if(message.indexOf("&") != -1)
 				message = coloring(message);
 
+			Matcher matcher = urlMatcher.matcher(message);
+
 			message = formatMessage(message, notUseJapanize.contains(senderUUID));
-			TextComponent component = new TextComponent(message = mainChatFormat.replace("[player]", senderName).replace("[message]", message));
+			TextComponent component = new TextComponent(message = mainChatFormat.replace("[player]", senderName).replace("[message]", message).replace("[server]", sender.getServer().getInfo().getName()));
+			if(matcher.find())
+				component.setClickEvent(new ClickEvent(Action.OPEN_URL, matcher.group()));
 			System.out.println(message);
 			for(ProxiedPlayer player : getProxy().getPlayers()){
 				if(isInvalidAccess(player))
@@ -246,7 +261,7 @@ public class Main extends Plugin implements Listener {
 
 		String name = in.readUTF();
 		String message = mainChatFormat.replace("[player]", "[WEB]" + ((name == null || name.isEmpty()) ? "" : name))
-				.replace("[message]", formatMessage(in.readUTF(), false));
+				.replace("[message]", formatMessage(in.readUTF(), false).replace("[server]", ""));
 
 		System.out.println(message);
 		TextComponent component = new TextComponent(message);
@@ -266,11 +281,11 @@ public class Main extends Plugin implements Listener {
 	}
 
 	public boolean isInvalidAccess(Server server){
-		return !servers.contains(server.getInfo().getName());
+		return !servers.containsKey(server.getInfo().getName());
 	}
 
 	public boolean isInvalidAccess(ProxiedPlayer player){
-		return !servers.contains(player.getServer().getInfo().getName());
+		return !servers.containsKey(player.getServer().getInfo().getName());
 	}
 
 	public interface Async extends Runnable {
