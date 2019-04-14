@@ -20,7 +20,7 @@ public class TellCommand extends Command {
 		Args args = new Args(strs);
 		String name = args.next();
 		ProxiedPlayer player = plugin.getProxy().getPlayer(name);
-		if(!plugin.isInvalidAccess(player))
+		if(plugin.isInvalidAccess(player))
 			return;
 
 		if(player == null){
@@ -36,7 +36,7 @@ public class TellCommand extends Command {
 			if(sender instanceof ProxiedPlayer){
 				ProxiedPlayer plyr = (ProxiedPlayer) sender;
 				senderName = plyr.getName();
-				senderServer = plyr.getServer().getInfo().getName();
+				senderServer = plugin.servers.get(plyr.getServer().getInfo().getName());
 			}else{
 				senderName = "Console";
 				senderServer = "";
@@ -44,7 +44,7 @@ public class TellCommand extends Command {
 			String message = plugin.privateChatFormat.replace("[sender]", senderName)
 					.replace("[s_server]", senderServer)
 					.replace("[receiver]", player.getName())
-					.replace("[r_server]", player.getServer().getInfo().getName())
+					.replace("[r_server]", plugin.servers.get(player.getServer().getInfo().getName()))
 					.replace("[message]", plugin.formatMessage(plugin.coloring(args.get(1, args.length() - 1)), plugin.notUseJapanize.contains(player.getUniqueId())));
 			TextComponent component = new TextComponent(message);
 			sender.sendMessage(component);

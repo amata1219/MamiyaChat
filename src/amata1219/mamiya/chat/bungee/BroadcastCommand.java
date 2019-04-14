@@ -27,7 +27,7 @@ public class BroadcastCommand extends Command {
 				if(!plugin.isInvalidAccess(player))
 					player.sendMessage(component);
 			}
-		});
+		}).execute();;
 	}
 
 }

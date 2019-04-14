@@ -26,7 +26,7 @@ import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.ChatEvent;
 import net.md_5.bungee.api.event.PluginMessageEvent;
-import net.md_5.bungee.api.event.ServerSwitchEvent;
+import net.md_5.bungee.api.event.ServerConnectedEvent;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.api.plugin.PluginManager;
@@ -177,11 +177,11 @@ public class Main extends Plugin implements Listener {
 
 		maildays = config.getInt("MailDays") * 86400000000000L;
 
-		mailMessage = config.getString("MailMessage");
+		mailMessage = coloring(config.getString("MailMessage"));
 	}
 
 	@EventHandler
-	public void onJoin(ServerSwitchEvent e){
+	public void onJoin(ServerConnectedEvent e){
 		ProxiedPlayer player = e.getPlayer();
 		UUID uuid = player.getUniqueId();
 		String name = player.getName();
@@ -193,9 +193,6 @@ public class Main extends Plugin implements Listener {
 
 			@Override
 			public void run() {
-				if(isInvalidAccess(player))
-					return;
-
 				if(mails.containsKey(uuid)){
 					ArrayList<Mail> mails = Main.plugin.mails.get(uuid);
 					player.sendMessage(new TextComponent(mailMessage.replace("[size]", String.valueOf(mails.size()))));
@@ -204,7 +201,7 @@ public class Main extends Plugin implements Listener {
 				}
 			}
 
-		}, 250, TimeUnit.MILLISECONDS);
+		}, 400, TimeUnit.MILLISECONDS);
 	}
 
 	@EventHandler
@@ -261,7 +258,7 @@ public class Main extends Plugin implements Listener {
 
 		String name = in.readUTF();
 		String message = mainChatFormat.replace("[player]", "[WEB]" + ((name == null || name.isEmpty()) ? "" : name))
-				.replace("[message]", formatMessage(in.readUTF(), false).replace("[server]", ""));
+				.replace("[message]", formatMessage(in.readUTF(), false)).replace("[server]", "");
 
 		System.out.println(message);
 		TextComponent component = new TextComponent(message);
