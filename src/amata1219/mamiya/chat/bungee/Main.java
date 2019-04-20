@@ -282,7 +282,15 @@ public class Main extends Plugin implements Listener {
 	}
 
 	public boolean isInvalidAccess(ProxiedPlayer player){
-		return !servers.containsKey(player.getServer().getInfo().getName());
+		Server server = player.getServer();
+		if(server == null)
+			return true;
+
+		ServerInfo info = server.getInfo();
+		if(info == null)
+			return true;
+
+		return !servers.containsKey(info.getName());
 	}
 
 	public interface Async extends Runnable {

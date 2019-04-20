@@ -39,11 +39,12 @@ public class Args {
 	}
 
 	public boolean hasNext(){
-		return index + 1 < args.length;
+		return index < args.length;
 	}
 
 	public String next(){
-		return hasNext() ? args[index++] : "";
+		index++;
+		return hasNext() ? args[index] : "";
 	}
 
 	public boolean hasNextBoolean(){

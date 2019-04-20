@@ -18,8 +18,7 @@ public class TellCommand extends Command {
 	@Override
 	public void execute(CommandSender sender, String[] strs) {
 		Args args = new Args(strs);
-		String name = args.next();
-		ProxiedPlayer player = plugin.getProxy().getPlayer(name);
+		ProxiedPlayer player = plugin.getProxy().getPlayer(args.next());
 		if(plugin.isInvalidAccess(player))
 			return;
 
