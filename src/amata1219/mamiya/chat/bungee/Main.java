@@ -102,14 +102,14 @@ public class Main extends Plugin implements Listener {
 
 		PluginManager manager = getProxy().getPluginManager();
 
-		manager.registerCommand(this, new MamiyaChatCommand("mamiyachat", "mamiya.chat.admin", "mchat"));
+		manager.registerCommand(this, new MamiyaChatCommand("mamiyachat", "mamiya.chat.admin", new String[0]));
 		manager.registerCommand(this, new TellCommand("tell", "mamiya.chat", "msg", "message"));
-		manager.registerCommand(this, new MailCommand("mail", "mamiya.chat", "mmail"));
-		manager.registerCommand(this, new MuteCommand("mute", "mamiya.chat", "mmute"));
-		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat", "munmute"));
-		manager.registerCommand(this, new MuteListCommand("mutelist", "mamiya.chat", "mutel", "mmutelist"));
+		manager.registerCommand(this, new MailCommand("mail", "mamiya.chat", new String[0]));
+		manager.registerCommand(this, new MuteCommand("mute", "mamiya.chat", new String[0]));
+		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat", new String[0]));
+		manager.registerCommand(this, new MuteListCommand("mutelist", "mamiya.chat", new String[0]));
 		manager.registerCommand(this, new JapanizeCommand("japanize", "mamiya.chat", "jp"));
-		manager.registerCommand(this, new BroadcastCommand("bcast", "mamiya.chat.admin", "mbcast"));
+		manager.registerCommand(this, new BroadcastCommand("bcast", "mamiya.chat.admin", new String[0]));
 
 		manager.registerListener(this, this);
 	}
@@ -282,6 +282,9 @@ public class Main extends Plugin implements Listener {
 	}
 
 	public boolean isInvalidAccess(ProxiedPlayer player){
+		if(player == null)
+			return true;
+
 		Server server = player.getServer();
 		if(server == null)
 			return true;

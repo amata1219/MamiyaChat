@@ -43,8 +43,7 @@ public class Args {
 	}
 
 	public String next(){
-		index++;
-		return hasNext() ? args[index] : "";
+		return hasNext() ? args[index++] : "";
 	}
 
 	public boolean hasNextBoolean(){

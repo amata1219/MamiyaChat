@@ -1,6 +1,7 @@
 package amata1219.mamiya.chat.bungee;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.UUID;
 
 import amata1219.mamiya.chat.command.Args;
@@ -50,17 +51,21 @@ public class MailCommand extends Command {
 			}
 
 			UUID receiverUUID = plugin.names.inverse().get(receiver);
+			HashSet<UUID> set = plugin.muted.get(receiverUUID);
+			boolean mute = (set == null || !set.contains(receiverUUID));
 			Mail mail = new Mail(System.nanoTime(), receiverUUID, uuid, plugin.coloring(args.get(2, args.length() - 1)));
 			ProxiedPlayer receiverr = plugin.getProxy().getPlayer(receiverUUID);
-			if(receiverr != null){
+			if(receiverr != null && mute){
 				receiverr.sendMessage(new TextComponent(ChatColor.AQUA + "メールを受信しました。"));
 				mail.send();
 			}
 
-			ArrayList<Mail> mailList = plugin.mails.get(receiverUUID);
-			if(mailList == null)
-				plugin.mails.put(receiverUUID, mailList = new ArrayList<>());
-			mailList.add(mail);
+			if(mute){
+				ArrayList<Mail> mailList = plugin.mails.get(receiverUUID);
+				if(mailList == null)
+					plugin.mails.put(receiverUUID, mailList = new ArrayList<>());
+				mailList.add(mail);
+			}
 			player.sendMessage(new TextComponent(ChatColor.AQUA + receiver + "さんにメールを送信しました。"));
 			player.sendMessage(new TextComponent(mail.getMessage()));
 			break;
@@ -88,6 +93,11 @@ public class MailCommand extends Command {
 			plugin.mails.remove(uuid);
 			mailstore.update();
 			player.sendMessage(new TextComponent(ChatColor.AQUA + String.valueOf(count) + "件のメールを削除しました。"));
+			break;
+		default:
+			player.sendMessage(new TextComponent(ChatColor.GRAY + "/mail send [player] [message]"));
+			player.sendMessage(new TextComponent(ChatColor.GRAY + "/mail read"));
+			player.sendMessage(new TextComponent(ChatColor.GRAY + "/mail clear"));
 			break;
 		}
 	}
