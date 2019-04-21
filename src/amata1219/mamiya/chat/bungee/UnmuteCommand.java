@@ -1,6 +1,5 @@
 package amata1219.mamiya.chat.bungee;
 
-import java.util.HashSet;
 import java.util.UUID;
 
 import net.md_5.bungee.api.ChatColor;
@@ -19,15 +18,6 @@ public class UnmuteCommand extends Command {
 
 	@Override
 	public void execute(CommandSender sender, String[] args) {
-		if(!(sender instanceof ProxiedPlayer)){
-			sender.sendMessage(new TextComponent(ChatColor.RED + "ゲーム内から実行して下さい。"));
-			return;
-		}
-
-		ProxiedPlayer player = (ProxiedPlayer) sender;
-		if(plugin.isInvalidAccess(player))
-			return;
-
 		if(args.length == 0){
 			sender.sendMessage(new TextComponent(ChatColor.RED + "プレイヤーを指定して下さい。"));
 			return;
@@ -39,18 +29,17 @@ public class UnmuteCommand extends Command {
 			return;
 		}
 
-		UUID uuid = player.getUniqueId();
-		UUID targetUUID = plugin.names.inverse().get(target);
-		HashSet<UUID> set = plugin.muted.get(uuid);
-		if(set == null || !set.contains(targetUUID)){
+		UUID uuid = plugin.names.inverse().get(target);
+		if(!plugin.muted.contains(uuid)){
 			sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーはミュートしていません。"));
 			return;
 		}
 
-		set.remove(targetUUID);
-		if(set.isEmpty())
-			plugin.muted.remove(uuid);
+		plugin.muted.remove(uuid);
 		sender.sendMessage(new TextComponent(ChatColor.AQUA + target + "さんのミュートを解除しました。"));
+		ProxiedPlayer player = plugin.getProxy().getPlayer(uuid);
+		if(player != null)
+			player.sendMessage(new TextComponent(ChatColor.RED + "ミュートが解除されました。"));
 	}
 
 }

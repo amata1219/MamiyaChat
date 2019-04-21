@@ -31,6 +31,10 @@ public class MailCommand extends Command {
 			return;
 
 		UUID uuid = player.getUniqueId();
+		if(plugin.muted.contains(uuid)){
+			sender.sendMessage(new TextComponent(ChatColor.RED + "ミュートされているため送信出来ません！"));
+			return;
+		}
 		Args args = new Args(strs);
 		switch(args.next()){
 		case "send":
@@ -51,16 +55,16 @@ public class MailCommand extends Command {
 			}
 
 			UUID receiverUUID = plugin.names.inverse().get(receiver);
-			HashSet<UUID> set = plugin.muted.get(receiverUUID);
-			boolean mute = (set == null || !set.contains(receiverUUID));
+			HashSet<UUID> set = plugin.hidden.get(receiverUUID);
+			boolean hide = (set == null || !set.contains(receiverUUID));
 			Mail mail = new Mail(System.nanoTime(), receiverUUID, uuid, plugin.coloring(args.get(2, args.length() - 1)));
 			ProxiedPlayer receiverr = plugin.getProxy().getPlayer(receiverUUID);
-			if(receiverr != null && mute){
+			if(receiverr != null && hide){
 				receiverr.sendMessage(new TextComponent(ChatColor.AQUA + "メールを受信しました。"));
 				mail.send();
 			}
 
-			if(mute){
+			if(hide){
 				ArrayList<Mail> mailList = plugin.mails.get(receiverUUID);
 				if(mailList == null)
 					plugin.mails.put(receiverUUID, mailList = new ArrayList<>());

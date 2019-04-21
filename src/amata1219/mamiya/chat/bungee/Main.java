@@ -37,11 +37,12 @@ public class Main extends Plugin implements Listener {
 
 	public static Main plugin;
 
-	public Config config, mutedata, playerdata, maildata, namedata;
+	public Config config, mutedata, hidedata, playerdata, maildata, namedata;
 	public ServerInfo dynmapServer;
 	public String mainChatFormat, normalFormat, convertedFormat, privateChatFormat, mailFormat, broadcastFormat, mailMessage;
 	public final HashBiMap<UUID, String> names = HashBiMap.create();
-	public final HashMap<UUID, HashSet<UUID>> muted = new HashMap<>();
+	public final HashSet<UUID> muted = new HashSet<>();
+	public final HashMap<UUID, HashSet<UUID>> hidden = new HashMap<>();
 	public final HashMap<UUID, ArrayList<Mail>> mails = new HashMap<>();
 	public final HashSet<UUID> notUseJapanize = new HashSet<>();
 	public final HashMap<String, String> servers = new HashMap<>();
@@ -58,7 +59,11 @@ public class Main extends Plugin implements Listener {
 		loadValues();
 
 		mutedata = new Config("mutedata.yml");
-		Configuration datastore = mutedata.config;
+		for(String uuid : mutedata.config.getStringList("Muted"))
+			muted.add(UUID.fromString(uuid));
+
+		hidedata = new Config("hidedata.yml");
+		Configuration datastore = hidedata.config;
 		for(String key : datastore.getKeys()){
 			UUID uuid = UUID.fromString(key);
 			List<String> list = datastore.getStringList(key);
@@ -69,7 +74,7 @@ public class Main extends Plugin implements Listener {
 			for(String mute : list)
 				set.add(UUID.fromString(mute));
 
-			muted.put(uuid, set);
+			hidden.put(uuid, set);
 		}
 
 		playerdata = new Config("playerdata.yml");
@@ -105,9 +110,12 @@ public class Main extends Plugin implements Listener {
 		manager.registerCommand(this, new MamiyaChatCommand("mamiyachat", "mamiya.chat.admin", new String[0]));
 		manager.registerCommand(this, new TellCommand("tell", "mamiya.chat", "msg", "message"));
 		manager.registerCommand(this, new MailCommand("mail", "mamiya.chat", new String[0]));
-		manager.registerCommand(this, new MuteCommand("mute", "mamiya.chat", new String[0]));
-		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat", new String[0]));
-		manager.registerCommand(this, new MuteListCommand("mutelist", "mamiya.chat", new String[0]));
+		manager.registerCommand(this, new HideCommand("hide", "mamiya.chat", new String[0]));
+		manager.registerCommand(this, new UnhideCommand("unhide", "mamiya.chat", new String[0]));
+		manager.registerCommand(this, new HideListCommand("hidelist", "mamiya.chat", new String[0]));
+		manager.registerCommand(this, new MuteCommand("mute", "mamiya.chat.admin", new String[0]));
+		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat.admin", new String[0]));
+		manager.registerCommand(this, new MuteListCommand("mutelist", "mamiya.chat.admin", new String[0]));
 		manager.registerCommand(this, new JapanizeCommand("japanize", "mamiya.chat", "jp"));
 		manager.registerCommand(this, new BroadcastCommand("bcast", "mamiya.chat.admin", new String[0]));
 
@@ -118,9 +126,13 @@ public class Main extends Plugin implements Listener {
 	public void onDisable(){
 		getProxy().getPluginManager().unregisterListeners(this);
 
-		Configuration datastore = mutedata.config;
+		List<UUID> mutedList = new ArrayList<>(muted);
+		mutedata.config.set("Muted", mutedList);
+		mutedata.save();
+
+		Configuration datastore = hidedata.config;
 		StringBuilder builder = new StringBuilder();
-		for(Entry<UUID, HashSet<UUID>> entry : muted.entrySet()){
+		for(Entry<UUID, HashSet<UUID>> entry : hidden.entrySet()){
 			String uuid = entry.getKey().toString();
 			HashSet<UUID> set = entry.getValue();
 			if(set.isEmpty()){
@@ -133,7 +145,7 @@ public class Main extends Plugin implements Listener {
 				builder.setLength(0);
 			}
 		}
-		mutedata.save();
+		hidedata.save();
 
 		Configuration players = playerdata.config;
 		List<String> uuids = new ArrayList<>(notUseJapanize.size());
@@ -226,6 +238,10 @@ public class Main extends Plugin implements Listener {
 			Matcher matcher = urlMatcher.matcher(message);
 
 			message = formatMessage(message, notUseJapanize.contains(senderUUID));
+			if(muted.contains(senderUUID)){
+				sender.sendMessage(new TextComponent(ChatColor.RED + "ミュートされているため発言出来ません！"));
+				return;
+			}
 			byte[] dynmap = ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "Dynmap", senderName, message);
 			dynmapServer.sendData("BungeeCord", dynmap);
 			TextComponent component = new TextComponent(message = mainChatFormat.replace("[player]", senderName).replace("[message]", message).replace("[server]", servers.get(sender.getServer().getInfo().getName())));
@@ -236,7 +252,7 @@ public class Main extends Plugin implements Listener {
 				if(isInvalidAccess(player))
 					continue;
 
-				HashSet<UUID> set = muted.get(player.getUniqueId());
+				HashSet<UUID> set = hidden.get(player.getUniqueId());
 				if(set == null || !set.contains(senderUUID))
 					player.sendMessage(component);
 			}

@@ -46,6 +46,11 @@ public class TellCommand extends Command {
 				senderServer = "";
 			}
 
+			if(plugin.muted.contains(senderUUID)){
+				sender.sendMessage(new TextComponent(ChatColor.RED + "ミュートされているため発言出来ません！"));
+				return;
+			}
+
 			String message = plugin.privateChatFormat.replace("[sender]", senderName)
 					.replace("[s_server]", senderServer)
 					.replace("[receiver]", player.getName())
@@ -54,9 +59,13 @@ public class TellCommand extends Command {
 			TextComponent component = new TextComponent(message);
 			sender.sendMessage(component);
 
-			HashSet<UUID> set = plugin.muted.get(player.getUniqueId());
-			if(set == null || !set.contains(senderUUID))
+			if(senderUUID == null){
 				player.sendMessage(component);
+			}else{
+				HashSet<UUID> set = plugin.hidden.get(player.getUniqueId());
+				if(set == null || !set.contains(senderUUID))
+					player.sendMessage(component);
+			}
 		}
 	}
 
