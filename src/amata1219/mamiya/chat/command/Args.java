@@ -20,9 +20,9 @@ public class Args {
 	}
 
 	public String get(int start, int end){
-		String text = get(start);
+		String text = get(start++);
 		while(start < end)
-			text += get(start++);
+			text += " " + get(start++);
 		return text;
 	}
 
@@ -31,7 +31,7 @@ public class Args {
 			return false;
 
 		try{
-			type.getChecker().accept(args[index + 1]);
+			type.getChecker().accept(args[index]);
 		}catch(Exception e){
 			return false;
 		}

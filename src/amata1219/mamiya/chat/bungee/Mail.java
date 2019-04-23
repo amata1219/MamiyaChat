@@ -2,6 +2,7 @@ package amata1219.mamiya.chat.bungee;
 
 import java.util.UUID;
 
+import amata1219.mamiya.chat.bungee.Main.Async;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 
@@ -19,12 +20,14 @@ public class Mail {
 	}
 
 	public void send(){
-		Main plugin = Main.plugin;
-		ProxiedPlayer player = plugin.getProxy().getPlayer(receiver);
-		if(player == null || plugin.isInvalidAccess(player))
-			return;
+		Async.write(() -> {
+			Main plugin = Main.plugin;
+			ProxiedPlayer player = plugin.getProxy().getPlayer(receiver);
+			if(player == null || plugin.isInvalidAccess(player))
+				return;
 
-		player.sendMessage(new TextComponent(getMessage()));
+			player.sendMessage(new TextComponent(getMessage()));
+		}).execute();
 	}
 
 	public String getMessage(){

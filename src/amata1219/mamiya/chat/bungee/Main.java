@@ -201,6 +201,9 @@ public class Main extends Plugin implements Listener {
 		if(!names.containsKey(uuid) || !names.get(uuid).equals(name))
 			names.put(uuid, name);
 
+		if(isInvalidAccess(player))
+			return;
+
 		getProxy().getScheduler().schedule(this, new Runnable(){
 
 			@Override

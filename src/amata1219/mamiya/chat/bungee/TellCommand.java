@@ -3,6 +3,7 @@ package amata1219.mamiya.chat.bungee;
 import java.util.HashSet;
 import java.util.UUID;
 
+import amata1219.mamiya.chat.bungee.Main.Async;
 import amata1219.mamiya.chat.command.Args;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
@@ -33,39 +34,41 @@ public class TellCommand extends Command {
 		if(!args.hasNext()){
 			sender.sendMessage(new TextComponent(ChatColor.RED + "メッセージを入力して下さい。"));
 		}else{
-			String senderName = null;
-			String senderServer = null;
-			UUID senderUUID = null;
-			if(sender instanceof ProxiedPlayer){
-				ProxiedPlayer plyr = (ProxiedPlayer) sender;
-				senderName = plyr.getName();
-				senderServer = plugin.servers.get(plyr.getServer().getInfo().getName());
-				senderUUID = plyr.getUniqueId();
-			}else{
-				senderName = "Console";
-				senderServer = "";
-			}
+			Async.write(() -> {
+				String senderName = null;
+				String senderServer = null;
+				UUID senderUUID = null;
+				if(sender instanceof ProxiedPlayer){
+					ProxiedPlayer plyr = (ProxiedPlayer) sender;
+					senderName = plyr.getName();
+					senderServer = plugin.servers.get(plyr.getServer().getInfo().getName());
+					senderUUID = plyr.getUniqueId();
+				}else{
+					senderName = "Console";
+					senderServer = "";
+				}
 
-			if(plugin.muted.contains(senderUUID)){
-				sender.sendMessage(new TextComponent(ChatColor.RED + "ミュートされているため発言出来ません！"));
-				return;
-			}
+				if(plugin.muted.contains(senderUUID)){
+					sender.sendMessage(new TextComponent(ChatColor.RED + "ミュートされているため発言出来ません！"));
+					return;
+				}
 
-			String message = plugin.privateChatFormat.replace("[sender]", senderName)
-					.replace("[s_server]", senderServer)
-					.replace("[receiver]", player.getName())
-					.replace("[r_server]", plugin.servers.get(player.getServer().getInfo().getName()))
-					.replace("[message]", plugin.formatMessage(plugin.coloring(args.get(1, args.length() - 1)), plugin.notUseJapanize.contains(player.getUniqueId())));
-			TextComponent component = new TextComponent(message);
-			sender.sendMessage(component);
+				String message = plugin.privateChatFormat.replace("[sender]", senderName)
+						.replace("[s_server]", senderServer)
+						.replace("[receiver]", player.getName())
+						.replace("[r_server]", plugin.servers.get(player.getServer().getInfo().getName()))
+						.replace("[message]", plugin.formatMessage(plugin.coloring(args.get(1, args.length() - 1)), plugin.notUseJapanize.contains(player.getUniqueId())));
+				TextComponent component = new TextComponent(message);
+				sender.sendMessage(component);
 
-			if(senderUUID == null){
-				player.sendMessage(component);
-			}else{
-				HashSet<UUID> set = plugin.hidden.get(player.getUniqueId());
-				if(set == null || !set.contains(senderUUID))
+				if(senderUUID == null){
 					player.sendMessage(component);
-			}
+				}else{
+					HashSet<UUID> set = plugin.hidden.get(player.getUniqueId());
+					if(set == null || !set.contains(senderUUID))
+						player.sendMessage(component);
+				}
+			}).execute();
 		}
 	}
 
