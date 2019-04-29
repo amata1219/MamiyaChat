@@ -16,6 +16,17 @@ import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteStreams;
 
 import amata1219.mamiya.chat.ByteArrayDataMaker;
+import amata1219.mamiya.chat.command.BroadcastCommand;
+import amata1219.mamiya.chat.command.HideCommand;
+import amata1219.mamiya.chat.command.HideListCommand;
+import amata1219.mamiya.chat.command.JapanizeCommand;
+import amata1219.mamiya.chat.command.MailCommand;
+import amata1219.mamiya.chat.command.MamiyaChatCommand;
+import amata1219.mamiya.chat.command.MuteCommand;
+import amata1219.mamiya.chat.command.MuteListCommand;
+import amata1219.mamiya.chat.command.TellCommand;
+import amata1219.mamiya.chat.command.UnhideCommand;
+import amata1219.mamiya.chat.command.UnmuteCommand;
 import net.md_5.bungee.UserConnection;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
@@ -48,7 +59,8 @@ public class Main extends Plugin implements Listener {
 	public final HashMap<String, String> servers = new HashMap<>();
 	public long maildays = 2592000000000000L;
 	public final Pattern urlMatcher = Pattern.compile("(http://|https://){1}[\\w\\.\\-/:\\#\\?\\=\\&\\;\\%\\~\\+]+", Pattern.CASE_INSENSITIVE);
-
+	public final Pattern halfKanaMatcher = Pattern.compile(".*[\\uff61-\\uff9f]+.*");
+	public final Pattern upperMatcher = Pattern.compile("^([A-Z]| )+$");
 
 	@Override
 	public void onEnable(){
@@ -109,6 +121,7 @@ public class Main extends Plugin implements Listener {
 
 		manager.registerCommand(this, new MamiyaChatCommand("mamiyachat", "mamiya.chat.admin", new String[0]));
 		manager.registerCommand(this, new TellCommand("tell", "mamiya.chat", "msg", "message"));
+		manager.registerCommand(this, new TellCommand("reply", "mamiya.chat", "r"));
 		manager.registerCommand(this, new MailCommand("mail", "mamiya.chat", new String[0]));
 		manager.registerCommand(this, new HideCommand("hide", "mamiya.chat", new String[0]));
 		manager.registerCommand(this, new UnhideCommand("unhide", "mamiya.chat", new String[0]));
@@ -239,8 +252,12 @@ public class Main extends Plugin implements Listener {
 				message = coloring(message);
 
 			Matcher matcher = urlMatcher.matcher(message);
+			boolean find = matcher.find();
+			String group = null;
+			if(find)
+				group = matcher.group();
 
-			message = formatMessage(message, notUseJapanize.contains(senderUUID));
+			message = formatMessage(message, notUseJapanize.contains(senderUUID), !find);
 			if(muted.contains(senderUUID)){
 				sender.sendMessage(new TextComponent(ChatColor.RED + "ミュートされているため発言出来ません！"));
 				return;
@@ -248,8 +265,8 @@ public class Main extends Plugin implements Listener {
 			byte[] dynmap = ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "Dynmap", senderName, message);
 			dynmapServer.sendData("BungeeCord", dynmap);
 			TextComponent component = new TextComponent(message = mainChatFormat.replace("[player]", senderName).replace("[message]", message).replace("[server]", servers.get(sender.getServer().getInfo().getName())));
-			if(matcher.find())
-				component.setClickEvent(new ClickEvent(Action.OPEN_URL, matcher.group()));
+			if(find)
+				component.setClickEvent(new ClickEvent(Action.OPEN_URL, group));
 			System.out.println(message);
 			for(ProxiedPlayer player : getProxy().getPlayers()){
 				if(isInvalidAccess(player))
@@ -276,7 +293,7 @@ public class Main extends Plugin implements Listener {
 			return;
 
 		String name = in.readUTF();
-		String message = mainChatFormat.replace("[player]", "[WEB]" + ((name == null || name.isEmpty()) ? "" : name))
+		String message = mainChatFormat.replace("[player]", ChatColor.GREEN + "[WEB]" + ChatColor.RESET + ((name == null || name.isEmpty()) ? "" : name))
 				.replace("[message]", formatMessage(in.readUTF(), false)).replace("[server]", "");
 
 		System.out.println(message);
@@ -293,6 +310,11 @@ public class Main extends Plugin implements Listener {
 
 	public String formatMessage(String message, boolean notUseJapanize){
 		return Converter.canConvert(message) && !notUseJapanize ? convertedFormat.replace("[original]", message)
+				.replace("[converted]", Converter.convert(message)) : normalFormat.replace("[original]", message);
+	}
+
+	public String formatMessage(String message, boolean notUseJapanize, boolean flag){
+		return flag & Converter.canConvert(message) && !notUseJapanize ? convertedFormat.replace("[original]", message)
 				.replace("[converted]", Converter.convert(message)) : normalFormat.replace("[original]", message);
 	}
 

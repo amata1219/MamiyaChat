@@ -1,6 +1,7 @@
-package amata1219.mamiya.chat.bungee;
+package amata1219.mamiya.chat.command;
 
 import amata1219.mamiya.chat.ByteArrayDataMaker;
+import amata1219.mamiya.chat.bungee.Main;
 import amata1219.mamiya.chat.bungee.Main.Async;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;

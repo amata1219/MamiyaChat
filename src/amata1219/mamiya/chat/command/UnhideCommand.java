@@ -1,19 +1,20 @@
-package amata1219.mamiya.chat.bungee;
+package amata1219.mamiya.chat.command;
 
 import java.util.HashSet;
 import java.util.UUID;
 
+import amata1219.mamiya.chat.bungee.Main;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Command;
 
-public class HideCommand extends Command {
+public class UnhideCommand extends Command {
 
 	private final Main plugin = Main.plugin;
 
-	public HideCommand(String name, String permission, String... aliases) {
+	public UnhideCommand(String name, String permission, String... aliases) {
 		super(name, permission, aliases);
 	}
 
@@ -40,18 +41,17 @@ public class HideCommand extends Command {
 		}
 
 		UUID uuid = player.getUniqueId();
-		UUID tuuid = plugin.names.inverse().get(target);
+		UUID targetUUID = plugin.names.inverse().get(target);
 		HashSet<UUID> set = plugin.hidden.get(uuid);
-		if(set == null)
-			plugin.hidden.put(uuid, set = new HashSet<>());
-
-		if(set.contains(tuuid)){
-			sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは既に非表示にしています。"));
+		if(set == null || !set.contains(targetUUID)){
+			sender.sendMessage(new TextComponent(ChatColor.RED + "指定されたプレイヤーは非表示にしていません。"));
 			return;
 		}
 
-		set.add(tuuid);
-		sender.sendMessage(new TextComponent(ChatColor.AQUA + target + "さんを非表示にしました。"));
+		set.remove(targetUUID);
+		if(set.isEmpty())
+			plugin.hidden.remove(uuid);
+		sender.sendMessage(new TextComponent(ChatColor.AQUA + target + "さんを表示しました。"));
 	}
 
 }

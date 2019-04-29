@@ -81,7 +81,7 @@ public class Converter {
 	}
 
 	public static boolean canConvert(String text){
-		return text.getBytes().length == text.length();// || !text.matches("[\\uFF61-\\uFF9F]+");
+		return text.getBytes().length == text.length() && (Main.plugin.upperMatcher.matcher(text).matches() ? false : !Main.plugin.halfKanaMatcher.matcher(text).matches());
 	}
 
 	public static String convert(String text){
@@ -224,7 +224,8 @@ public class Converter {
 						builder.append(last + "？");
 						break;
 					default:
-						continue;
+						builder.append(last + tmp);
+						break;
 					}
 					last = "";
 				}

@@ -1,10 +1,12 @@
-package amata1219.mamiya.chat.bungee;
+package amata1219.mamiya.chat.command;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.UUID;
 
-import amata1219.mamiya.chat.command.Args;
+import amata1219.mamiya.chat.bungee.Config;
+import amata1219.mamiya.chat.bungee.Mail;
+import amata1219.mamiya.chat.bungee.Main;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
