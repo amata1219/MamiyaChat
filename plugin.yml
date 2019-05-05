@@ -1,6 +1,6 @@
 name: MamiyaChat
 main: amata1219.mamiya.chat.spigot.Main
-version: 1.9.6
+version: 1.9.7
 api-version: 1.13
 softdepend: [dynmap]
 author: amata1219(Twitter@amata1219)

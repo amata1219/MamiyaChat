@@ -57,6 +57,10 @@ public class TellCommand extends Command {
 					sender.sendMessage(new TextComponent(ChatColor.RED + "ミュートされているため発言出来ません！"));
 					return;
 				}
+				if(!senderName.equals("Console")){
+					ReplyCommand.map.put(player.getUniqueId(), senderUUID);
+					ReplyCommand.map.put(senderUUID, player.getUniqueId());
+				}
 
 				String text = args.get(1, args.length());
 				Matcher matcher = plugin.urlMatcher.matcher(text);
