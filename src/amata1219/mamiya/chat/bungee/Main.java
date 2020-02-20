@@ -24,6 +24,7 @@ import amata1219.mamiya.chat.command.MailCommand;
 import amata1219.mamiya.chat.command.MamiyaChatCommand;
 import amata1219.mamiya.chat.command.MuteCommand;
 import amata1219.mamiya.chat.command.MuteListCommand;
+import amata1219.mamiya.chat.command.ReplyCommand;
 import amata1219.mamiya.chat.command.TellCommand;
 import amata1219.mamiya.chat.command.UnhideCommand;
 import amata1219.mamiya.chat.command.UnmuteCommand;
@@ -121,7 +122,7 @@ public class Main extends Plugin implements Listener {
 
 		manager.registerCommand(this, new MamiyaChatCommand("mamiyachat", "mamiya.chat.admin", new String[0]));
 		manager.registerCommand(this, new TellCommand("tell", "mamiya.chat", "msg", "message"));
-		manager.registerCommand(this, new TellCommand("reply", "mamiya.chat", "r"));
+		manager.registerCommand(this, new ReplyCommand("reply", "mamiya.chat", "r"));
 		manager.registerCommand(this, new MailCommand("mail", "mamiya.chat", new String[0]));
 		manager.registerCommand(this, new HideCommand("hide", "mamiya.chat", new String[0]));
 		manager.registerCommand(this, new UnhideCommand("unhide", "mamiya.chat", new String[0]));
