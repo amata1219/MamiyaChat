@@ -19,7 +19,6 @@ import amata1219.mamiya.chat.ByteArrayDataMaker;
 import amata1219.mamiya.chat.command.BroadcastCommand;
 import amata1219.mamiya.chat.command.HideCommand;
 import amata1219.mamiya.chat.command.HideListCommand;
-import amata1219.mamiya.chat.command.JapanizeCommand;
 import amata1219.mamiya.chat.command.MailCommand;
 import amata1219.mamiya.chat.command.MamiyaChatCommand;
 import amata1219.mamiya.chat.command.MuteCommand;
@@ -130,7 +129,7 @@ public class Main extends Plugin implements Listener {
 		manager.registerCommand(this, new MuteCommand("mute", "mamiya.chat.admin", new String[0]));
 		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat.admin", new String[0]));
 		manager.registerCommand(this, new MuteListCommand("mutelist", "mamiya.chat.admin", new String[0]));
-		manager.registerCommand(this, new JapanizeCommand("japanize", "mamiya.chat", "jp"));
+		//manager.registerCommand(this, new JapanizeCommand("japanize", "mamiya.chat", "jp"));
 		manager.registerCommand(this, new BroadcastCommand("bcast", "mamiya.chat.admin", new String[0]));
 
 		manager.registerListener(this, this);
@@ -290,18 +289,33 @@ public class Main extends Plugin implements Listener {
 		if(!in.readUTF().equals("MamiyaChat"))
 			return;
 
-		if(!in.readUTF().equals("WebChat"))
-			return;
+		switch(in.readUTF()){
+		case "WebChat":
+			String name = in.readUTF();
+			String message = mainChatFormat.replace("[player]", ChatColor.GREEN + "[WEB]" + ChatColor.RESET + ((name == null || name.isEmpty()) ? "" : name))
+					.replace("[message]", formatMessage(in.readUTF(), false)).replace("[server]", "");
 
-		String name = in.readUTF();
-		String message = mainChatFormat.replace("[player]", ChatColor.GREEN + "[WEB]" + ChatColor.RESET + ((name == null || name.isEmpty()) ? "" : name))
-				.replace("[message]", formatMessage(in.readUTF(), false)).replace("[server]", "");
-
-		System.out.println(message);
-		TextComponent component = new TextComponent(message);
-		for(ProxiedPlayer player : getProxy().getPlayers()){
-			if(!isInvalidAccess(player))
-				player.sendMessage(component);
+			System.out.println(message);
+			TextComponent component = new TextComponent(message);
+			for(ProxiedPlayer player : getProxy().getPlayers()){
+				if(!isInvalidAccess(player))
+					player.sendMessage(component);
+			}
+			break;
+		case "JpCmd":
+			ProxiedPlayer player = (ProxiedPlayer) e.getSender();
+			UUID uuid = player.getUniqueId();
+			HashSet<UUID> set = Main.plugin.notUseJapanize;
+			if(set.contains(uuid)){
+				set.remove(uuid);
+				player.sendMessage(new TextComponent(ChatColor.AQUA + "ローマ字変換機能を有効にしました。"));
+			}else{
+				set.add(uuid);
+				player.sendMessage(new TextComponent(ChatColor.AQUA + "ローマ字変換機能を無効にしました。"));
+			}
+			break;
+		default:
+			break;
 		}
 	}
 
