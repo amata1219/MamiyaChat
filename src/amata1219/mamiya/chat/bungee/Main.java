@@ -3,6 +3,7 @@ package amata1219.mamiya.chat.bungee;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -36,6 +37,7 @@ import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.ChatEvent;
+import net.md_5.bungee.api.event.PlayerDisconnectEvent;
 import net.md_5.bungee.api.event.PluginMessageEvent;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
 import net.md_5.bungee.api.plugin.Listener;
@@ -61,6 +63,9 @@ public class Main extends Plugin implements Listener {
 	public final Pattern urlMatcher = Pattern.compile("(http://|https://){1}[\\w\\.\\-/:\\#\\?\\=\\&\\;\\%\\~\\+]+", Pattern.CASE_INSENSITIVE);
 	public final Pattern halfKanaMatcher = Pattern.compile(".*[\\uff61-\\uff9f]+.*");
 	public final Pattern upperMatcher = Pattern.compile("^([A-Z]| )+$");
+	private final HashMap<UUID, List<Long>> lastRemarks = new HashMap<>();
+	private final HashSet<UUID> temporaryMuted = new HashSet<>();
+	private int antispamTerm, antispamCount, muteMinutes;
 
 	@Override
 	public void onEnable(){
@@ -203,6 +208,10 @@ public class Main extends Plugin implements Listener {
 		maildays = config.getInt("MailDays") * 86400000000000L;
 
 		mailMessage = coloring(config.getString("MailMessage"));
+		
+		antispamTerm = config.getInt("AntiSpam.Limit") * 1000;
+		antispamCount = config.getInt("AntiSpam.Count");
+		muteMinutes = config.getInt("AntiSpam.PeriodOfTimeToMute");
 	}
 
 	@EventHandler
@@ -216,7 +225,7 @@ public class Main extends Plugin implements Listener {
 
 		if(isInvalidAccess(player))
 			return;
-
+		
 		getProxy().getScheduler().schedule(this, new Runnable(){
 
 			@Override
@@ -231,46 +240,64 @@ public class Main extends Plugin implements Listener {
 
 		}, 400, TimeUnit.MILLISECONDS);
 	}
+	
+	@EventHandler
+	public void onQuit(PlayerDisconnectEvent e){
+		lastRemarks.remove(e.getPlayer().getUniqueId());
+	}
 
 	@EventHandler
 	public void onChat(ChatEvent e){
-		if(e.isCancelled() || e.isCommand())
-			return;
+		if(e.isCancelled() || e.isCommand()) return;
 
 		UserConnection sender = (UserConnection) e.getSender();
-		if(isInvalidAccess(sender.getServer()))
-			return;
+		if(isInvalidAccess(sender.getServer())) return;
 
 		e.setCancelled(true);
+		
+		final UUID senderUUID = sender.getUniqueId();
+		if(muted.contains(senderUUID) || temporaryMuted.contains(senderUUID)){
+			sender.sendMessage(new TextComponent(ChatColor.RED + "ミュートされているため発言出来ません。"));
+			return;
+		}
+		
+		final long now = System.currentTimeMillis();
+		List<Long> lastRemark = lastRemarks.get(senderUUID);
+		if(lastRemark == null){
+			lastRemarks.put(senderUUID, lastRemark = new ArrayList<>());
+		}
+		Iterator<Long> iterator = lastRemark.iterator();
+		while(iterator.hasNext()){
+			if(now - iterator.next() > antispamTerm) iterator.remove();
+		}
+		lastRemark.add(now);
+		
+		if(lastRemark.size() > antispamCount){
+			temporaryMuted.add(senderUUID);
+			getProxy().getScheduler().schedule(plugin, () -> temporaryMuted.remove(senderUUID), muteMinutes, TimeUnit.MINUTES);
+			sender.sendMessage(new TextComponent(ChatColor.RED + "あなたはミュートされました。"));
+			return;
+		}
 
 		Async.write(() -> {
-			UUID senderUUID = sender.getUniqueId();
-			String senderName = sender.getName();
-
 			String message = e.getMessage();
-			if(message.indexOf("&") != -1)
-				message = coloring(message);
+			
+			String senderName = sender.getName();
+			if(message.indexOf("&") != -1) message = coloring(message);
 
 			Matcher matcher = urlMatcher.matcher(message);
 			boolean find = matcher.find();
 			String group = null;
-			if(find)
-				group = matcher.group();
+			if(find) group = matcher.group();
 
 			message = formatMessage(message, notUseJapanize.contains(senderUUID), !find);
-			if(muted.contains(senderUUID)){
-				sender.sendMessage(new TextComponent(ChatColor.RED + "ミュートされているため発言出来ません！"));
-				return;
-			}
 			byte[] dynmap = ByteArrayDataMaker.makeByteArrayDataOutput("MamiyaChat", "Dynmap", senderName, message);
 			dynmapServer.sendData("BungeeCord", dynmap);
 			TextComponent component = new TextComponent(message = mainChatFormat.replace("[player]", senderName).replace("[message]", message).replace("[server]", servers.get(sender.getServer().getInfo().getName())));
-			if(find)
-				component.setClickEvent(new ClickEvent(Action.OPEN_URL, group));
+			if(find) component.setClickEvent(new ClickEvent(Action.OPEN_URL, group));
 			System.out.println(message);
 			for(ProxiedPlayer player : getProxy().getPlayers()){
-				if(isInvalidAccess(player))
-					continue;
+				if(isInvalidAccess(player)) continue;
 
 				HashSet<UUID> set = hidden.get(player.getUniqueId());
 				if(set == null || !set.contains(senderUUID))

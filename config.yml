@@ -11,3 +11,10 @@ Servers:
 DynmapServer: "main"
 MailDays: 30
 MailMessage: "&bメール受信メッセージ編集機能（[size]件のメールを受信しました。）\n/mail clearで削除できます。"
+AntiSpam:
+  Term: 5
+  #Term秒間に、
+  Limit: 4
+  #Limit回より多く発言すると、
+  PeriodOfTimeToMute: 10
+  #PeriodOfTimeToMute分ミュートされる
