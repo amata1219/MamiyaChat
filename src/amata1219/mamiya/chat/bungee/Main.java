@@ -20,6 +20,7 @@ import amata1219.mamiya.chat.ByteArrayDataMaker;
 import amata1219.mamiya.chat.command.BroadcastCommand;
 import amata1219.mamiya.chat.command.HideCommand;
 import amata1219.mamiya.chat.command.HideListCommand;
+import amata1219.mamiya.chat.command.JapanizeCommand;
 import amata1219.mamiya.chat.command.MailCommand;
 import amata1219.mamiya.chat.command.MamiyaChatCommand;
 import amata1219.mamiya.chat.command.MuteCommand;
@@ -65,7 +66,7 @@ public class Main extends Plugin implements Listener {
 	public final Pattern upperMatcher = Pattern.compile("^([A-Z]| )+$");
 	private final HashMap<UUID, List<Long>> lastRemarks = new HashMap<>();
 	private final HashSet<UUID> temporaryMuted = new HashSet<>();
-	private int antispamTerm, antispamCount, muteMinutes;
+	private int antispamTerm, antispamLimit, muteMinutes;
 
 	@Override
 	public void onEnable(){
@@ -134,7 +135,7 @@ public class Main extends Plugin implements Listener {
 		manager.registerCommand(this, new MuteCommand("mute", "mamiya.chat.admin", new String[0]));
 		manager.registerCommand(this, new UnmuteCommand("unmute", "mamiya.chat.admin", new String[0]));
 		manager.registerCommand(this, new MuteListCommand("mutelist", "mamiya.chat.admin", new String[0]));
-		//manager.registerCommand(this, new JapanizeCommand("japanize", "mamiya.chat", "jp"));
+		manager.registerCommand(this, new JapanizeCommand("japanize", "mamiya.chat", "jp"));
 		manager.registerCommand(this, new BroadcastCommand("bcast", "mamiya.chat.admin", new String[0]));
 
 		manager.registerListener(this, this);
@@ -209,8 +210,8 @@ public class Main extends Plugin implements Listener {
 
 		mailMessage = coloring(config.getString("MailMessage"));
 		
-		antispamTerm = config.getInt("AntiSpam.Limit") * 1000;
-		antispamCount = config.getInt("AntiSpam.Count");
+		antispamTerm = config.getInt("AntiSpam.Term") * 1000;
+		antispamLimit = config.getInt("AntiSpam.Limit");
 		muteMinutes = config.getInt("AntiSpam.PeriodOfTimeToMute");
 	}
 
@@ -220,11 +221,9 @@ public class Main extends Plugin implements Listener {
 		UUID uuid = player.getUniqueId();
 		String name = player.getName();
 
-		if(!names.containsKey(uuid) || !names.get(uuid).equals(name))
-			names.put(uuid, name);
+		if(!names.containsKey(uuid) || !names.get(uuid).equals(name)) names.put(uuid, name);
 
-		if(isInvalidAccess(player))
-			return;
+		if(isInvalidAccess(player)) return;
 		
 		getProxy().getScheduler().schedule(this, new Runnable(){
 
@@ -233,12 +232,11 @@ public class Main extends Plugin implements Listener {
 				if(mails.containsKey(uuid)){
 					ArrayList<Mail> mails = Main.plugin.mails.get(uuid);
 					player.sendMessage(new TextComponent(mailMessage.replace("[size]", String.valueOf(mails.size()))));
-					for(Mail mail : mails)
-						mail.send();
+					for(Mail mail : mails) mail.send();
 				}
 			}
 
-		}, 400, TimeUnit.MILLISECONDS);
+		}, 1, TimeUnit.SECONDS);
 	}
 	
 	@EventHandler
@@ -272,10 +270,10 @@ public class Main extends Plugin implements Listener {
 		}
 		lastRemark.add(now);
 		
-		if(lastRemark.size() > antispamCount){
+		if(lastRemark.size() > antispamLimit){
 			temporaryMuted.add(senderUUID);
 			getProxy().getScheduler().schedule(plugin, () -> temporaryMuted.remove(senderUUID), muteMinutes, TimeUnit.MINUTES);
-			sender.sendMessage(new TextComponent(ChatColor.RED + "あなたはミュートされました。"));
+			sender.sendMessage(new TextComponent(ChatColor.RED + "スパム行為によりあなたはミュートされました。"));
 			return;
 		}
 
@@ -327,18 +325,6 @@ public class Main extends Plugin implements Listener {
 			for(ProxiedPlayer player : getProxy().getPlayers()){
 				if(!isInvalidAccess(player))
 					player.sendMessage(component);
-			}
-			break;
-		case "JpCmd":
-			ProxiedPlayer player = (ProxiedPlayer) e.getSender();
-			UUID uuid = player.getUniqueId();
-			HashSet<UUID> set = Main.plugin.notUseJapanize;
-			if(set.contains(uuid)){
-				set.remove(uuid);
-				player.sendMessage(new TextComponent(ChatColor.AQUA + "ローマ字変換機能を有効にしました。"));
-			}else{
-				set.add(uuid);
-				player.sendMessage(new TextComponent(ChatColor.AQUA + "ローマ字変換機能を無効にしました。"));
 			}
 			break;
 		default:

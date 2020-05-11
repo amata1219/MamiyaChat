@@ -23,9 +23,7 @@ public class Mail {
 		Async.write(() -> {
 			Main plugin = Main.plugin;
 			ProxiedPlayer player = plugin.getProxy().getPlayer(receiver);
-			if(player == null || plugin.isInvalidAccess(player))
-				return;
-
+			if(player == null || plugin.isInvalidAccess(player)) return;
 			player.sendMessage(new TextComponent(getMessage()));
 		}).execute();
 	}
