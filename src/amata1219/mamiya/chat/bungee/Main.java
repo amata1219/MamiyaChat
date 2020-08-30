@@ -223,19 +223,12 @@ public class Main extends Plugin implements Listener {
 
 		if(!names.containsKey(uuid) || !names.get(uuid).equals(name)) names.put(uuid, name);
 
-		if(isInvalidAccess(player)) return;
-		
-		getProxy().getScheduler().schedule(this, new Runnable(){
-
-			@Override
-			public void run() {
-				if(mails.containsKey(uuid)){
-					ArrayList<Mail> mails = Main.plugin.mails.get(uuid);
-					player.sendMessage(new TextComponent(mailMessage.replace("[size]", String.valueOf(mails.size()))));
-					for(Mail mail : mails) mail.send();
-				}
+		getProxy().getScheduler().schedule(this, () -> {
+			if(mails.containsKey(uuid)){
+				ArrayList<Mail> mails = Main.plugin.mails.get(uuid);
+				player.sendMessage(new TextComponent(mailMessage.replace("[size]", String.valueOf(mails.size()))));
+				for(Mail mail : mails) mail.send();
 			}
-
 		}, 1, TimeUnit.SECONDS);
 	}
 	
@@ -327,6 +320,14 @@ public class Main extends Plugin implements Listener {
 					player.sendMessage(component);
 			}
 			break;
+		/*case "PlayerJoin":
+			ProxiedPlayer player = getProxy().getPlayer(UUID.fromString(in.readUTF()));
+			UUID uuid = player.getUniqueId();
+			if(mails.containsKey(uuid)){
+				ArrayList<Mail> mails = Main.plugin.mails.get(uuid);
+				player.sendMessage(new TextComponent(mailMessage.replace("[size]", String.valueOf(mails.size()))));
+				for(Mail mail : mails) mail.send();
+			}*/
 		default:
 			break;
 		}

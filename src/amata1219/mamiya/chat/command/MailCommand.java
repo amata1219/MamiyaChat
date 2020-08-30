@@ -67,8 +67,7 @@ public class MailCommand extends Command {
 			}
 
 			if(hide){
-				ArrayList<Mail> mailList = plugin.mails.get(receiverUUID);
-				if(mailList == null) plugin.mails.put(receiverUUID, mailList = new ArrayList<>());
+				ArrayList<Mail> mailList = plugin.mails.computeIfAbsent(receiverUUID, k -> new ArrayList<>());
 				mailList.add(mail);
 			}
 			player.sendMessage(new TextComponent(ChatColor.AQUA + receiver + "さんにメールを送信しました。"));
