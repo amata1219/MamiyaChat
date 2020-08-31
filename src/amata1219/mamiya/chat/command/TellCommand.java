@@ -43,11 +43,13 @@ public class TellCommand extends Command {
 				String senderName = null;
 				String senderServer = null;
 				UUID senderUUID = null;
+				boolean isNonJapanize = false;
 				if(sender instanceof ProxiedPlayer){
 					ProxiedPlayer plyr = (ProxiedPlayer) sender;
 					senderName = plyr.getName();
 					senderServer = plugin.servers.get(plyr.getServer().getInfo().getName());
 					senderUUID = plyr.getUniqueId();
+					isNonJapanize = plugin.notUseJapanize.contains(senderUUID);
 				}else{
 					senderName = "Console";
 					senderServer = "";
@@ -73,7 +75,7 @@ public class TellCommand extends Command {
 						.replace("[s_server]", senderServer)
 						.replace("[receiver]", player.getName())
 						.replace("[r_server]", plugin.servers.get(player.getServer().getInfo().getName()))
-						.replace("[message]", plugin.formatMessage(plugin.coloring(text), plugin.notUseJapanize.contains(player.getUniqueId())));
+						.replace("[message]", plugin.formatMessage(plugin.coloring(text), isNonJapanize));
 				TextComponent component = new TextComponent(message);
 				if(find)
 					component.setClickEvent(new ClickEvent(Action.OPEN_URL, group));
