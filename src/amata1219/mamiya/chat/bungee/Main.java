@@ -6,11 +6,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.HashBiMap;
 import com.google.common.io.ByteArrayDataInput;
@@ -145,7 +145,7 @@ public class Main extends Plugin implements Listener {
 	public void onDisable(){
 		getProxy().getPluginManager().unregisterListeners(this);
 
-		List<UUID> mutedList = new ArrayList<>(muted);
+		List<String> mutedList = muted.stream().map(Object::toString).collect(Collectors.toList());
 		mutedata.config.set("Muted", mutedList);
 		mutedata.save();
 
